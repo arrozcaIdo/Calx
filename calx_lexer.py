@@ -275,7 +275,7 @@ class CalxLexer:
                     while self.peek().isalnum() or self.peek() == "_":
                         bad_id += self.advance()
                     raise LexicalError(
-                        f"Lexical error at line {start_line}: "
+                        f"Lexical error at line {start_line}, col {start_col}: "
                         f"Invalid identifier '{bad_id}'. Rule 1 violated: Identifiers cannot begin with a digit."
                     )
 
