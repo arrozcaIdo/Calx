@@ -1,6 +1,5 @@
 # =====================================================================
-# Calx Web Server (Built-in http.server - Zero PIP installs required)
-# Bridges the index UI to calx_lexer.py
+# Calx Web Server
 # =====================================================================
 
 import http.server
