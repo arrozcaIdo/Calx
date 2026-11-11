@@ -1,3 +1,4 @@
+# WILL FIX: Multi-line comments; tulog muna bye
 
 # operators are chunked and validated against recognized symbols (VALID_OPERATORS)
 # spaces optional around operators but required between words
@@ -5,6 +6,8 @@
 
 # all machines as tables
 # runs all state machines and selects the one reading the farthest.
+
+
 
 # defines the DFA lookup tables used by the lexer to group valid lexemes.
 
@@ -154,6 +157,17 @@ SINGLE_COMMENT_TABLE = {
 }
 SINGLE_COMMENT_ACCEPT = ["Q2"]
 
+MULTI_COMMENT_TABLE = {
+    "Q1": {'"': "Q2"},
+    "Q2": {'"': "Q3"},
+    "Q3": {'"': "Q4"},
+    "Q4": {"NOT_QUOTE": "Q4", '"': "Q5"},
+    "Q5": {"NOT_QUOTE": "Q4", '"': "Q6"},
+    "Q6": {"NOT_QUOTE": "Q4", '"': "Q7"},
+    "Q7": {},
+}
+MULTI_COMMENT_ACCEPT = ["Q7"]
+
 NEWLINE_TABLE = {"Q1": {"\n": "Q2"}, "Q2": {}}
 NEWLINE_ACCEPT = ["Q2"]
 
@@ -270,6 +284,21 @@ def tokenize(text):
                 raise LexicalError(
                     f"Invalid operator '{op_chunk}'. Not a recognized operator symbol."
                 )
+        # In tokenize(), before the DFA loop:
+        if text.startswith('"""', pos):
+            closing_idx = text.find('"""', pos + 3)
+            if closing_idx == -1:
+                raise LexicalError("Unterminated multi-line comment: missing closing '\"\"\"'")
+            
+            end = closing_idx + 3
+            lexeme = text[pos:end]
+            
+            # If you want comments displayed in the token table:
+            tokens.append(("COMMENT", lexeme))
+            
+            # (If you want comments silently discarded, just don't append to tokens)
+            pos = end
+            continue
 
         # Table-driven DFA matching
         best_token, best_end = None, pos
