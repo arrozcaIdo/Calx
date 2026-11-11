@@ -122,13 +122,6 @@
 
     <!-- Quick Action Controls -->
     <div class="flex items-center gap-2 text-xs">
-      <button id="toggle-editor-btn" class="px-3 py-1.5 rounded-lg bg-chemblue-850 hover:bg-chemblue-800 text-chemblue-200 hover:text-white border border-chemblue-700/80 hover:border-chemblue-500 transition flex items-center gap-1.5 font-medium shadow-sm active:scale-95">
-        <svg class="w-4 h-4 text-dandelion-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-        </svg>
-        <span id="editor-btn-text">Multi-line Script Editor</span>
-      </button>
-
       <button id="clear-term-btn" class="px-3 py-1.5 rounded-lg bg-chemblue-850 hover:bg-chemblue-800 text-slate-300 hover:text-white border border-chemblue-700/80 hover:border-dandelion-400/60 transition flex items-center gap-1.5 font-medium shadow-sm active:scale-95" title="Clear terminal screen and reset token state">
         <svg class="w-4 h-4 text-dandelion-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -136,12 +129,6 @@
         <span>Clear</span>
       </button>
 
-      <button id="help-btn" class="px-3 py-1.5 rounded-lg bg-dandelion-400/15 hover:bg-dandelion-400/25 text-dandelion-300 border border-dandelion-400/50 hover:border-dandelion-300 transition font-medium active:scale-95 flex items-center gap-1.5">
-        <svg class="w-4 h-4 text-dandelion-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-        </svg>
-        <span>Reference</span>
-      </button>
     </div>
   </header>
 
@@ -201,21 +188,11 @@ run the heavy_opt"></textarea>
             <span class="text-[10px] font-mono bg-chemblue-800 text-chemblue-300 px-1.5 py-0.5 rounded border border-chemblue-700">
               Statically Typed DSL
             </span>
-            <span class="hidden md:inline-flex items-center gap-1 text-[11px] text-dandelion-300 font-mono">
-              <span class="w-1.5 h-1.5 rounded-full bg-dandelion-400 animate-pulse"></span>
-              Active
-            </span>
           </div>
         </div>
 
         <!-- Terminal Stats & Export Controls -->
         <div class="text-[11px] font-mono text-chemblue-300 flex items-center gap-2">
-          <button id="export-json-btn" title="Export latest scanned tokens as JSON" class="px-2 py-0.5 bg-chemblue-850 hover:bg-chemblue-800 text-dandelion-300 rounded border border-chemblue-700 hover:border-dandelion-400/50 transition flex items-center gap-1">
-            <span>JSON</span>
-          </button>
-          <button id="export-csv-btn" title="Export latest scanned tokens as CSV" class="px-2 py-0.5 bg-chemblue-850 hover:bg-chemblue-800 text-dandelion-300 rounded border border-chemblue-700 hover:border-dandelion-400/50 transition flex items-center gap-1">
-            <span>CSV</span>
-          </button>
           <span class="text-chemblue-700">|</span>
           <span id="token-count-display" class="text-slate-300 font-medium">Tokens: 0</span>
         </div>
@@ -527,7 +504,7 @@ run the heavy_opt"></textarea>
 
       <!-- Modal Footer -->
       <div class="p-3.5 bg-chemblue-850 border-t border-chemblue-800 flex items-center justify-between">
-        <span class="text-[11px] text-chemblue-400 font-mono">Calx Lexer Grammar Specification</span>
+        <span class="text-[11px] text-chemblue-400 font-mono">Calx Lexer Grammar Specification v2.4</span>
         <button id="close-help-btn-2" class="px-3 py-1.5 rounded-lg bg-dandelion-400/15 hover:bg-dandelion-400/25 text-dandelion-300 border border-dandelion-400/50 hover:border-dandelion-300 transition font-medium text-xs active:scale-95 flex items-center gap-1.5 shadow-sm">
           <span>Close Reference</span>
         </button>
@@ -899,8 +876,6 @@ run the heavy_opt"></textarea>
             <table class="w-full text-left text-xs border-collapse">
               <thead>
                 <tr class="bg-chemblue-900/90 text-chemblue-300 border-b border-chemblue-800 text-[11px] uppercase tracking-wider">
-                  <th class="py-2 px-3 w-14">Line</th>
-                  <th class="py-2 px-3 w-14">Col</th>
                   <th class="py-2 px-3 w-44">Token Category</th>
                   <th class="py-2 px-3">Raw Value / Lexeme</th>
                 </tr>
@@ -913,8 +888,7 @@ run the heavy_opt"></textarea>
         const safeVal = t.value === "\\n" ? "\\n (newline)" : (t.value === "" ? `[${t.type}]` : t.value);
         html += `
           <tr class="hover:bg-chemblue-850/50 transition">
-            <td class="py-1 px-3 text-chemblue-400 text-[11px]">${t.line}</td>
-            <td class="py-1 px-3 text-chemblue-400 text-[11px]">${t.column}</td>
+
             <td class="py-1 px-3">
               <span class="inline-block px-2 py-0.5 rounded text-[11px] ${badge}">
                 ${t.type}
@@ -1176,7 +1150,6 @@ run the optimize_solute(aspirin)`;
     }
 
     // Export Controls
-    const exportJsonBtn = document.getElementById("export-json-btn");
     if (exportJsonBtn) {
       exportJsonBtn.addEventListener("click", () => {
         if (!latestTokensList.length) {
@@ -1193,7 +1166,6 @@ run the optimize_solute(aspirin)`;
       });
     }
 
-    const exportCsvBtn = document.getElementById("export-csv-btn");
     if (exportCsvBtn) {
       exportCsvBtn.addEventListener("click", () => {
         if (!latestTokensList.length) {
