@@ -1,373 +1,319 @@
-# =====================================================================
-# Calx Lexical Analyzer 
-# =====================================================================
 
+# operators are chunked and validated against recognized symbols (VALID_OPERATORS)
+# spaces optional around operators but required between words
+# evaluates input against multiple DFA transition tables; longest valid match (Maximal Munch tawag)
+
+# all machines as tables
+# runs all state machines and selects the one reading the farthest.
+
+# defines the DFA lookup tables used by the lexer to group valid lexemes.
+
+GROUPS = {
+    "ALPHABET":          lambda c: ("a" <= c <= "z") or ("A" <= c <= "Z"),
+    "DIGITS":            lambda c: "0" <= c <= "9",
+    "NOT_NEWLINE":       lambda c: c != "\n" and c != "\r",
+    "NOT_QUOTE_NEWLINE": lambda c: c != '"' and c != "\n" and c != "\r",
+    "NOT_APOST_NEWLINE": lambda c: c != "'" and c != "\n" and c != "\r",
+}
+
+# builds the table for a list of words
+def word_table(words):
+    table = {"Q1": {}}
+    accept = []
+    state_after = {"": "Q1"}
+    for word in words:
+        so_far = ""
+        for ch in word:
+            longer = so_far + ch
+            if longer not in state_after:
+                new_state = "Q" + str(len(state_after) + 1)
+                state_after[longer] = new_state
+                table[new_state] = {}
+                table[state_after[so_far]][ch] = new_state
+            so_far = longer
+        accept.append(state_after[so_far])
+    return table, accept
+
+# builds the table for symbols 
+def symbol_table(symbol):
+    table = {}
+    for i, ch in enumerate(symbol):
+        table["Q" + str(i + 1)] = {ch: "Q" + str(i + 2)}
+    last = "Q" + str(len(symbol) + 1)
+    table[last] = {}
+    return table, [last]
+
+
+# list of keywords, noise, reserved
+# specific types of keywords
+DOMAIN_KEYWORDS = [
+    "reaction", "theory", "task", "run", "compound", "contract",
+    "formula", "molecular_weight", "on_success", "on_failure"
+]
+
+CONTROL_KEYWORDS = ["if", "elif", "else", "for", "in", "range"]
+IO_KEYWORDS      = ["print", "read"]
+MODULE_KEYWORDS  = ["from", "import"]
+LOGICAL_KEYWORDS = ["is", "not", "and", "or"]
+
+TYPE_SPECS = ["Float", "Integer", "Boolean", "String", "mol", "Vector", "Matrix"]
+DIM_CLASSES = ["Length", "Mass", "Time", "Temp", "Pressure", "Energy", "Amount", "Volume", "Dipole", "Data"]
+UNITS = [
+    "kcal/mol", "kJ/mol",
+    "Kelvin", "Celsius", "kg", "g", "mg", "m", "km", "cm", "nm", "Angstrom",
+    "mmol", "L", "mL", "Joule", "Debye", "kJ", "Hartree", "eV", "s", "fs",
+    "ps", "ns", "bar", "atm", "Pa", "GB", "MB", "mol"
+]
+STATE_FLAGS = ["converged", "stationary", "radical"]
+NOISE_WORDS = ["the"]
+
+KW_DOMAIN_TABLE, KW_DOMAIN_ACCEPT     = word_table(DOMAIN_KEYWORDS)
+KW_CONTROL_TABLE, KW_CONTROL_ACCEPT   = word_table(CONTROL_KEYWORDS)
+KW_IO_TABLE, KW_IO_ACCEPT             = word_table(IO_KEYWORDS)
+KW_MODULE_TABLE, KW_MODULE_ACCEPT     = word_table(MODULE_KEYWORDS)
+KW_LOGICAL_TABLE, KW_LOGICAL_ACCEPT   = word_table(LOGICAL_KEYWORDS)
+TYPE_SPEC_TABLE, TYPE_SPEC_ACCEPT     = word_table(TYPE_SPECS)
+DIM_CLASS_TABLE, DIM_CLASS_ACCEPT     = word_table(DIM_CLASSES)
+UNIT_TABLE, UNIT_ACCEPT               = word_table(UNITS)
+STATE_FLAG_TABLE, STATE_FLAG_ACCEPT   = word_table(STATE_FLAGS)
+NOISE_WORD_TABLE, NOISE_WORD_ACCEPT   = word_table(NOISE_WORDS)
+
+# also sets the rules for an identifier 
+# (1) must start w letter or underscore
+# (2) can contain letters, digits, underscores
+# (3) kapag nasa q2 na, loop sa letters, digits, _, hanggang may humarang na space or symbol
+IDENTIFIER_TABLE = {
+    "Q1": {"ALPHABET": "Q2", "_": "Q2"},
+    "Q2": {"ALPHABET": "Q2", "DIGITS": "Q2", "_": "Q2"},
+}
+IDENTIFIER_ACCEPT = ["Q2"]
+
+# for integer literals
+INTEGER_TABLE = {
+    "Q1": {"DIGITS": "Q2"},
+    "Q2": {"DIGITS": "Q2"},
+}
+INTEGER_ACCEPT = ["Q2"]
+
+FLOAT_TABLE = {
+    "Q1": {"DIGITS": "Q2"},
+    "Q2": {"DIGITS": "Q2", ".": "Q3"},
+    "Q3": {"DIGITS": "Q4"},
+    "Q4": {"DIGITS": "Q4"},
+}
+FLOAT_ACCEPT = ["Q4"]
+
+# valid operators para sa chunk checking
+VALID_OPERATORS = {
+    "<=>": "REL_OP",
+    "=>":  "REL_OP",
+    "->":  "REL_OP",
+    "==":  "REL_OP",
+    "!=":  "REL_OP",
+    "<=":  "REL_OP",
+    ">=":  "REL_OP",
+    "<":   "REL_OP",
+    ">":   "REL_OP",
+    "+=":  "COMP_ASSIGN",
+    "-=":  "COMP_ASSIGN",
+    "*=":  "COMP_ASSIGN",
+    "/=":  "COMP_ASSIGN",
+    "=":   "ASSIGN",
+    "@":   "MATMUL",
+    "^":   "EXPONENT",
+    "+":   "ARITH_OP",
+    "-":   "ARITH_OP",
+    "*":   "ARITH_OP",
+    "/":   "ARITH_OP",
+    "%":   "ARITH_OP",
+}
+
+# delimiters and brackets
+DELIM_LPAREN_TABLE, DELIM_LPAREN_ACCEPT     = symbol_table("(")
+DELIM_RPAREN_TABLE, DELIM_RPAREN_ACCEPT     = symbol_table(")")
+DELIM_LBRACKET_TABLE, DELIM_LBRACKET_ACCEPT = symbol_table("[")
+DELIM_RBRACKET_TABLE, DELIM_RBRACKET_ACCEPT = symbol_table("]")
+DELIM_LBRACE_TABLE, DELIM_LBRACE_ACCEPT     = symbol_table("{")
+DELIM_RBRACE_TABLE, DELIM_RBRACE_ACCEPT     = symbol_table("}")
+DELIM_COLON_TABLE, DELIM_COLON_ACCEPT       = symbol_table(":")
+DELIM_COMMA_TABLE, DELIM_COMMA_ACCEPT       = symbol_table(",")
+DELIM_DOT_TABLE, DELIM_DOT_ACCEPT           = symbol_table(".")
+
+STRING_TABLE = {
+    "Q1": {'"': "Q2", "'": "Q3"},
+    "Q2": {"NOT_QUOTE_NEWLINE": "Q2", '"': "Q4"},
+    "Q3": {"NOT_APOST_NEWLINE": "Q3", "'": "Q4"},
+    "Q4": {},
+}
+STRING_ACCEPT = ["Q4"]
+
+# for comments
+SINGLE_COMMENT_TABLE = {
+    "Q1": {"#": "Q2"},                  # "#" then text
+    "Q2": {"NOT_NEWLINE": "Q2"},        # ... end of the line
+}
+SINGLE_COMMENT_ACCEPT = ["Q2"]
+
+NEWLINE_TABLE = {"Q1": {"\n": "Q2"}, "Q2": {}}
+NEWLINE_ACCEPT = ["Q2"]
+
+BLANK_TABLE = {
+    "Q1": {" ": "Q2", "\t": "Q2"},
+    "Q2": {" ": "Q2", "\t": "Q2"},
+}
+BLANK_ACCEPT = ["Q2"]
+
+# lahat ng machines
+MACHINES = [
+    # words
+    ("UNIT",              UNIT_ACCEPT,            UNIT_TABLE),
+    ("KW_DOMAIN",         KW_DOMAIN_ACCEPT,       KW_DOMAIN_TABLE),
+    ("KW_CONTROL",        KW_CONTROL_ACCEPT,      KW_CONTROL_TABLE),
+    ("KW_IO",             KW_IO_ACCEPT,           KW_IO_TABLE),
+    ("KW_MODULE",         KW_MODULE_ACCEPT,       KW_MODULE_TABLE),
+    ("KW_LOGICAL",        KW_LOGICAL_ACCEPT,      KW_LOGICAL_TABLE),
+    ("TYPE_SPEC",         TYPE_SPEC_ACCEPT,       TYPE_SPEC_TABLE),
+    ("DIM_CLASS",         DIM_CLASS_ACCEPT,       DIM_CLASS_TABLE),
+    ("STATE_FLAG",        STATE_FLAG_ACCEPT,      STATE_FLAG_TABLE),
+    ("NOISE_WORD",        NOISE_WORD_ACCEPT,      NOISE_WORD_TABLE),
+    # literals
+    ("FLOAT_LIT",         FLOAT_ACCEPT,           FLOAT_TABLE),
+    ("INT_LIT",           INTEGER_ACCEPT,         INTEGER_TABLE),
+    ("IDENTIFIER",        IDENTIFIER_ACCEPT,      IDENTIFIER_TABLE),
+    ("STRING_LIT",        STRING_ACCEPT,          STRING_TABLE),
+    # delimiters
+    ("DELIM_LPAREN",      DELIM_LPAREN_ACCEPT,    DELIM_LPAREN_TABLE),
+    ("DELIM_RPAREN",      DELIM_RPAREN_ACCEPT,    DELIM_RPAREN_TABLE),
+    ("DELIM_LBRACKET",    DELIM_LBRACKET_ACCEPT,  DELIM_LBRACKET_TABLE),
+    ("DELIM_RBRACKET",    DELIM_RBRACKET_ACCEPT,  DELIM_RBRACKET_TABLE),
+    ("DELIM_LBRACE",      DELIM_LBRACE_ACCEPT,    DELIM_LBRACE_TABLE),
+    ("DELIM_RBRACE",      DELIM_RBRACE_ACCEPT,    DELIM_RBRACE_TABLE),
+    ("DELIM_COLON",       DELIM_COLON_ACCEPT,     DELIM_COLON_TABLE),
+    ("DELIM_COMMA",       DELIM_COMMA_ACCEPT,     DELIM_COMMA_TABLE),
+    ("DELIM_DOT",         DELIM_DOT_ACCEPT,       DELIM_DOT_TABLE),
+    # comments, newlines, blanks
+    ("COMMENT",           SINGLE_COMMENT_ACCEPT,  SINGLE_COMMENT_TABLE),
+    ("NEWLINE",           NEWLINE_ACCEPT,         NEWLINE_TABLE),
+    ("BLANK",             BLANK_ACCEPT,           BLANK_TABLE),
+]
+
+WORD_TOKENS = {
+    "KW_DOMAIN", "KW_CONTROL", "KW_IO", "KW_MODULE", "KW_LOGICAL",
+    "TYPE_SPEC", "DIM_CLASS", "UNIT", "STATE_FLAG", "NOISE_WORD", "IDENTIFIER"
+}
+
+OPERATOR_CHARS = set("+-*/%^=<>!@")
+DELIMITER_CHARS = set("()[]{},:.")
+
+# SCANNER 
 class LexicalError(Exception):
-    """Raised when the scanner encounters an invalid token, character, or lexical pattern."""
     pass
 
 
-class Token:
-    def __init__(self, token_type, value, line, column):
-        self.type = token_type
-        self.value = value
-        self.line = line
-        self.column = column
-
-    def __repr__(self):
-        return f"Token({self.type}, {repr(self.value)}, line={self.line}, col={self.column})"
+def is_word_char(c):
+    return c.isascii() and (c.isalnum() or c == "_")
 
 
-class CalxLexer:
-    KEYWORDS = {
-        "reaction", "theory", "task", "run", "compound", "contract",
-        "if", "elif", "else", "for", "in", "print", "read", "range",
-        "from", "import", "on_success", "on_failure", "is", "not", "and", "or"
-    }
+def end_of_word(text, pos): # san natatapos 
+    while pos < len(text) and is_word_char(text[pos]):
+        pos += 1
+    return pos
 
-    TYPE_SPECS = {
-        "Float", "Integer", "Boolean", "String", "mol", "Vector", "Matrix"
-    }
 
-    DIM_CLASSES = {
-        "Length", "Mass", "Time", "Temp", "Pressure", "Energy",
-        "Amount", "Volume", "Dipole", "Data"
-    }
+def next_state(table, state, ch): # san next based sa table
+    if state not in table:
+        return None
+    for label, target in table[state].items():
+        if label in GROUPS:
+            if GROUPS[label](ch):
+                return target
+        elif label == ch:
+            return target
+    return None
 
-    UNITS = {
-        "Kelvin", "Celsius", "kg", "g", "mg", "m", "km", "cm", "nm", "Angstrom",
-        "mol", "mmol", "L", "mL", "Joule", "Debye", "kJ", "kcal/mol",
-        "kJ/mol", "Hartree", "eV", "s", "fs", "ps", "ns", "bar", "atm",
-        "Pa", "GB", "MB"
-    }
 
-    STATE_FLAGS = {
-        "converged", "stationary", "radical"
-    }
+def longest_match(accept, table, text, pos):
+    state = "Q1"
+    longest = -1
+    i = pos
+    while i < len(text):
+        state = next_state(table, state, text[i])
+        if state is None:
+            break
+        i += 1
+        if state in accept:
+            longest = i
+    return longest
 
-    NOISE_WORDS = {
-        "the"
-    }
 
-    ALL_RESERVED = KEYWORDS | TYPE_SPECS | DIM_CLASSES | UNITS | STATE_FLAGS | NOISE_WORDS
+def tokenize(text):
+    text = text.replace("\r\n", "\n")   # carriage return before newline
+    tokens = []
+    pos = 0
 
-    def __init__(self, source_code):
-        self.source = source_code
-        self.pos = 0
-        self.length = len(source_code)
-        self.line = 1
-        self.col = 1
-        self.tokens = []
-        self.indent_stack = [0]
-        self.bracket_depth = 0
-        self.at_line_start = True
+    while pos < len(text): # ask every machine; longest match wins
+        ch = text[pos]
+        # reads the entire continuous sequence of operator characters until
+        # hitting whitespace, an alphanumeric character, or a bracket/delimiter
+        if ch in OPERATOR_CHARS:
+            end = pos
+            while end < len(text) and text[end] in OPERATOR_CHARS:
+                end += 1
+            op_chunk = text[pos:end]
 
-    def peek(self, offset=0):
-        index = self.pos + offset
-        if index < self.length:
-            return self.source[index]
-        return ""
-
-    def advance(self):
-        ch = self.peek()
-        self.pos += 1
-        self.col += 1
-        return ch
-
-    def match_str(self, target):
-        end_idx = self.pos + len(target)
-        if end_idx <= self.length and self.source[self.pos:end_idx] == target:
-            self.pos += len(target)
-            self.col += len(target)
-            return True
-        return False
-
-    def tokenize(self):
-        while self.pos < self.length:
-            # ---------------------------------------------------------
-            # 1. Indentation & Off-side Rule Processing
-            # ---------------------------------------------------------
-            if self.at_line_start:
-                spaces = 0
-                start_col = self.col
-
-                while self.peek() in (" ", "\t"):
-                    if self.peek() == " ":
-                        spaces += 1
-                    else:
-                        spaces += 4
-                    self.pos += 1
-                    self.col += 1
-
-                ch = self.peek()
-                if ch in ("\r", "\n") or ch == "#":
-                    if ch == "\r" and self.peek(1) == "\n":
-                        self.pos += 2
-                    elif ch in ("\r", "\n"):
-                        self.pos += 1
-                    elif ch == "#":
-                        while self.peek() and self.peek() not in ("\r", "\n"):
-                            self.advance()
-                        if self.peek() == "\r" and self.peek(1) == "\n":
-                            self.pos += 2
-                        elif self.peek() in ("\r", "\n"):
-                            self.pos += 1
-                    self.line += 1
-                    self.col = 1
-                    continue
-
-                if self.pos >= self.length:
-                    break
-
-                self.at_line_start = False
-
-                if self.bracket_depth == 0:
-                    current_indent = spaces
-                    if current_indent > self.indent_stack[-1]:
-                        if current_indent % 4 != 0:
-                            raise IndentationError(
-                                f"Line {self.line}: Indentation must be in increments of 4 spaces (found {current_indent} spaces)."
-                            )
-                        self.indent_stack.append(current_indent)
-                        self.tokens.append(Token("INDENT", " " * (current_indent - self.indent_stack[-2]), self.line, start_col))
-                    else:
-                        while current_indent < self.indent_stack[-1]:
-                            self.indent_stack.pop()
-                            self.tokens.append(Token("DEDENT", "", self.line, start_col))
-                        if current_indent != self.indent_stack[-1]:
-                            raise IndentationError(
-                                f"Line {self.line}: Unaligned dedent matching no outer indentation level."
-                            )
-
-            # ---------------------------------------------------------
-            # 2. Token Formation
-            # ---------------------------------------------------------
-            start_line = self.line
-            start_col = self.col
-            ch = self.peek()
-
-            # Skip horizontal whitespace
-            if ch in (" ", "\t"):
-                self.advance()
+            # validate; Error? record and skip
+            if op_chunk in VALID_OPERATORS:
+                tokens.append((VALID_OPERATORS[op_chunk], op_chunk))
+                pos = end
                 continue
+            else:
+                raise LexicalError(
+                    f"Invalid operator '{op_chunk}'. Not a recognized operator symbol."
+                )
 
-            # Newlines
-            if ch in ("\r", "\n"):
-                if ch == "\r" and self.peek(1) == "\n":
-                    self.pos += 2
-                else:
-                    self.pos += 1
-                self.line += 1
-                self.col = 1
-                self.at_line_start = True
-                if self.bracket_depth == 0:
-                    self.tokens.append(Token("NEWLINE", "\\n", start_line, start_col))
-                continue
+        # Table-driven DFA matching
+        best_token, best_end = None, pos
+        for token_type, accept, table in MACHINES:
+            end = longest_match(accept, table, text, pos)
+            if end > best_end:
+                best_token, best_end = token_type, end
 
-            # Comments
-            if ch == "#":
-                while self.peek() and self.peek() not in ("\r", "\n"):
-                    self.advance()
-                continue
-
-            # Multi-line comment/docstring
-            if self.match_str('"""'):
-                val = '"""'
-                while self.pos < self.length:
-                    if self.match_str('"""'):
-                        val += '"""'
-                        break
-                    c = self.advance()
-                    val += c
-                    if c == "\n":
-                        self.line += 1
-                        self.col = 1
-                else:
-                    raise LexicalError(f"Line {start_line}: Unterminated multi-line comment.")
-                self.tokens.append(Token("STRING_LIT", val, start_line, start_col))
-                continue
-
-            # Strings & f-strings
-            is_fstring = False
-            if ch == "f" and self.peek(1) in ('"', "'"):
-                is_fstring = True
-                self.advance()
-                ch = self.peek()
-
+        if best_token is None:
             if ch in ('"', "'"):
-                quote_type = self.advance()
-                val = "f" + quote_type if is_fstring else quote_type
-                closed = False
-                while self.pos < self.length:
-                    c = self.advance()
-                    val += c
-                    if c == "\\":
-                        if self.pos < self.length:
-                            val += self.advance()
-                    elif c == quote_type:
-                        closed = True
-                        break
-                    elif c in ("\r", "\n"):
-                        raise LexicalError(f"Line {start_line}: EOL while scanning string literal.")
+                raise LexicalError("Unterminated string literal")
+            raise LexicalError(f"Unexpected character {repr(ch)}. Not a valid member of character set.")
 
-                if not closed:
-                    raise LexicalError(f"Line {start_line}: Unterminated string literal.")
+        # Rule 1: Identifiers cannot begin with a digit
+        if best_token == "INT_LIT" and best_end < len(text) and (text[best_end].isalpha() or text[best_end] == "_"):
+            bad_end = end_of_word(text, best_end)
+            bad_id = text[pos:bad_end]
+            raise LexicalError(f"Invalid identifier '{bad_id}'. Rule 1 violated: Identifiers cannot begin with a digit.")
 
-                self.tokens.append(Token("STRING_LIT", val, start_line, start_col))
-                continue
+        # Rule 5: Hyphens are not allowed inside identifiers
+        if best_token in WORD_TOKENS and best_end < len(text) and text[best_end] == "-":
+            if best_end + 1 < len(text) and (is_word_char(text[best_end + 1]) or text[best_end + 1] == "-"):
+                scan = best_end + 1
+                while scan < len(text) and (is_word_char(text[scan]) or text[scan] == "-"):
+                    scan += 1
+                bad_word = text[pos:scan]
+                raise LexicalError(f"Invalid identifier '{bad_word}'. Rule 5 violated: Hyphens are not allowed inside identifiers.")
 
-            # Multi-character Operators
-            if self.match_str("<=>"):
-                self.tokens.append(Token("<=>", "<=>", start_line, start_col))
-                continue
-            if self.match_str("=>"):
-                self.tokens.append(Token("=>", "=>", start_line, start_col))
-                continue
-            if self.match_str("->"):
-                self.tokens.append(Token("->", "->", start_line, start_col))
-                continue
-            if self.match_str("<="):
-                self.tokens.append(Token("REL_OP", "<=", start_line, start_col))
-                continue
-            if self.match_str(">="):
-                self.tokens.append(Token("REL_OP", ">=", start_line, start_col))
-                continue
-            if self.match_str("=="):
-                self.tokens.append(Token("REL_OP", "==", start_line, start_col))
-                continue
-            if self.match_str("!="):
-                self.tokens.append(Token("REL_OP", "!=", start_line, start_col))
-                continue
-            if self.match_str("+="):
-                self.tokens.append(Token("COMP_ASSIGN", "+=", start_line, start_col))
-                continue
-            if self.match_str("-="):
-                self.tokens.append(Token("COMP_ASSIGN", "-=", start_line, start_col))
-                continue
-            if self.match_str("*="):
-                self.tokens.append(Token("COMP_ASSIGN", "*=", start_line, start_col))
-                continue
-            if self.match_str("/="):
-                self.tokens.append(Token("COMP_ASSIGN", "/=", start_line, start_col))
-                continue
+        # adjacent words require spaces
+        if best_token in WORD_TOKENS and best_end < len(text) and is_word_char(text[best_end]):
+            raise LexicalError("Invalid word token (missing delimiter/blank between words)")
 
-            # Compound Units
-            if self.match_str("kcal/mol"):
-                self.tokens.append(Token("UNIT", "kcal/mol", start_line, start_col))
-                continue
-            if self.match_str("kJ/mol"):
-                self.tokens.append(Token("UNIT", "kJ/mol", start_line, start_col))
-                continue
+        lexeme = text[pos:best_end]
+        if best_token not in ("BLANK", "NEWLINE", "COMMENT"):
+            tokens.append((best_token, lexeme))
 
-            # Numbers: Floats and Integers
-            if ch.isdigit():
-                num_str = ""
-                has_dot = False
+        pos = best_end
 
-                while self.peek().isdigit() or (self.peek() == "." and not has_dot and self.peek(1).isdigit()):
-                    if self.peek() == ".":
-                        has_dot = True
-                    num_str += self.advance()
+    return tokens
 
-                # Catch identifiers starting with digits (e.g., 1mol, 2x, 3_energy)
-                if self.peek().isalpha() or self.peek() == "_":
-                    bad_id = num_str
-                    while self.peek().isalnum() or self.peek() == "_":
-                        bad_id += self.advance()
-                    raise LexicalError(
-                        f"Lexical error at line {start_line}, col {start_col}: "
-                        f"Invalid identifier '{bad_id}'. Rule 1 violated: Identifiers cannot begin with a digit."
-                    )
-
-                if has_dot:
-                    self.tokens.append(Token("FLOAT_LIT", num_str, start_line, start_col))
-                else:
-                    self.tokens.append(Token("INT_LIT", num_str, start_line, start_col))
-                continue
-
-            # Identifiers and Reserved Words
-            if ch.isalpha() or ch == "_":
-                word = ""
-                while self.peek().isalnum() or self.peek() == "_":
-                    word += self.advance()
-
-                # Rule 5: Hyphens inside identifiers
-                if self.peek() == "-" and (self.peek(1).isalnum() or self.peek(1) == "_"):
-                    self.advance()  # consume '-'
-                    word += "-"
-                    while self.peek().isalnum() or self.peek() == "_" or self.peek() == "-":
-                        word += self.advance()
-                    raise LexicalError(
-                        f"Lexical error at line {start_line}, col {start_col}: "
-                        f"Invalid identifier '{word}'. Rule 5 violated: Hyphens are not allowed inside identifiers."
-                    )
-
-                # Categorization
-                if word in self.ALL_RESERVED:
-                    if word in self.KEYWORDS:
-                        self.tokens.append(Token("KEYWORD", word, start_line, start_col))
-                    elif word in self.TYPE_SPECS:
-                        self.tokens.append(Token("TYPE_SPEC", word, start_line, start_col))
-                    elif word in self.DIM_CLASSES:
-                        self.tokens.append(Token("DIM_CLASS", word, start_line, start_col))
-                    elif word in self.UNITS:
-                        self.tokens.append(Token("UNIT", word, start_line, start_col))
-                    elif word in self.STATE_FLAGS:
-                        self.tokens.append(Token("STATE_FLAG", word, start_line, start_col))
-                    elif word in self.NOISE_WORDS:
-                        self.tokens.append(Token("NOISE_WORD", word, start_line, start_col))
-                else:
-                    self.tokens.append(Token("IDENTIFIER", word, start_line, start_col))
-                continue
-
-            # Delimiters and Brackets
-            if ch in ("(", "[", "{"):
-                self.bracket_depth += 1
-                self.tokens.append(Token(ch, self.advance(), start_line, start_col))
-                continue
-
-            if ch in (")", "]", "}"):
-                if self.bracket_depth > 0:
-                    self.bracket_depth -= 1
-                self.tokens.append(Token(ch, self.advance(), start_line, start_col))
-                continue
-
-            # Single-character operators and punctuation (including '.')
-            single_tokens = {
-                "@": "MATMUL",
-                "^": "EXPONENT",
-                "=": "ASSIGN",
-                "<": "REL_OP",
-                ">": "REL_OP",
-                "+": "ARITH_OP",
-                "-": "ARITH_OP",
-                "*": "ARITH_OP",
-                "/": "ARITH_OP",
-                "%": "ARITH_OP",
-                ":": ":",
-                ",": ",",
-                ".": "."
-            }
-
-            if ch in single_tokens:
-                self.tokens.append(Token(single_tokens[ch], self.advance(), start_line, start_col))
-                continue
-
-            raise LexicalError(
-                f"Lexical error at line {start_line}, col {start_col}: "
-                f"Unexpected character {repr(ch)}. Not a valid member of character set."
-            )
-
-        while len(self.indent_stack) > 1:
-            self.indent_stack.pop()
-            self.tokens.append(Token("DEDENT", "", self.line, self.col))
-
-        self.tokens.append(Token("EOF", "", self.line, self.col))
-        return self.tokens
-
+# TERMINAL REPL
 if __name__ == "__main__":
-    print("=== Calx Strict Lexical Analyzer ===")
-    print("Type Calx statements to inspect tokens. Type 'exit' to quit.\n")
+    print("=== Calx Lexical Analyzer ===")
+    print("Enter Calx statements to inspect tokens. Type 'exit' to quit.\n")
 
     while True:
         try:
@@ -377,17 +323,15 @@ if __name__ == "__main__":
             if not line.strip():
                 continue
 
-            lexer = CalxLexer(line)
-            tokens = lexer.tokenize()
+            tokens = tokenize(line)
 
             print(f"{'TYPE':<20} {'VALUE'}")
             print("-" * 35)
-            for tok in tokens:
-                if tok.type != "EOF":
-                    print(f"{tok.type:<20} {repr(tok.value)}")
+            for tok_type, tok_val in tokens:
+                print(f"{tok_type:<20} {repr(tok_val)}")
             print()
 
-        except (LexicalError, IndentationError) as err:
+        except LexicalError as err:
             print(f"Error: {err}\n")
         except (KeyboardInterrupt, EOFError):
             print("\nExiting.")
