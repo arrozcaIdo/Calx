@@ -325,14 +325,6 @@ def tokenize(text):
             bad_id = text[pos:bad_end]
             raise LexicalError(f"Invalid identifier '{bad_id}'. Rule 1 violated: Identifiers cannot begin with a digit.")
 
-        # Rule 5: Hyphens are not allowed inside identifiers
-        if best_token in WORD_TOKENS and best_end < len(text) and text[best_end] == "-":
-            if best_end + 1 < len(text) and (is_word_char(text[best_end + 1]) or text[best_end + 1] == "-"):
-                scan = best_end + 1
-                while scan < len(text) and (is_word_char(text[scan]) or text[scan] == "-"):
-                    scan += 1
-                bad_word = text[pos:scan]
-                raise LexicalError(f"Invalid identifier '{bad_word}'. Rule 5 violated: Hyphens are not allowed inside identifiers.")
 
         # adjacent words require spaces
         if best_token in WORD_TOKENS and best_end < len(text) and is_word_char(text[best_end]):
