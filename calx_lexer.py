@@ -7,8 +7,6 @@
 # all machines as tables
 # runs all state machines and selects the one reading the farthest.
 
-
-
 # defines the DFA lookup tables used by the lexer to group valid lexemes.
 
 GROUPS = {
@@ -51,7 +49,7 @@ def symbol_table(symbol):
 # specific types of keywords
 DOMAIN_KEYWORDS = [
     "reaction", "theory", "task", "run", "compound", "contract",
-    "formula", "molecular_weight", "on_success", "on_failure"
+    "on_success", "on_failure"
 ]
 
 SIMULATION_KEYWORDS = [
@@ -80,7 +78,7 @@ KW_CONTROL_TABLE, KW_CONTROL_ACCEPT   = word_table(CONTROL_KEYWORDS)
 KW_IO_TABLE, KW_IO_ACCEPT             = word_table(IO_KEYWORDS)
 KW_MODULE_TABLE, KW_MODULE_ACCEPT     = word_table(MODULE_KEYWORDS)
 KW_LOGICAL_TABLE, KW_LOGICAL_ACCEPT   = word_table(LOGICAL_KEYWORDS)
-KW_SIM_TABLE, KW_SIM_ACCEPT             = word_table(SIMULATION_KEYWORDS)
+KW_SIM_TABLE, KW_SIM_ACCEPT           = word_table(SIMULATION_KEYWORDS)
 TYPE_SPEC_TABLE, TYPE_SPEC_ACCEPT     = word_table(TYPE_SPECS)
 DIM_CLASS_TABLE, DIM_CLASS_ACCEPT     = word_table(DIM_CLASSES)
 UNIT_TABLE, UNIT_ACCEPT               = word_table(UNITS)
@@ -111,6 +109,20 @@ FLOAT_TABLE = {
     "Q4": {"DIGITS": "Q4"},
 }
 FLOAT_ACCEPT = ["Q4"]
+
+# duration token 
+DURATION_TABLE = {
+    "Q1": {"DIGITS": "Q2"},
+    "Q2": {"DIGITS": "Q3"},
+    "Q3": {"DIGITS": "Q3", ":": "Q4"},
+    "Q4": {"DIGITS": "Q5"},
+    "Q5": {"DIGITS": "Q6"},
+    "Q6": {":": "Q7"},
+    "Q7": {"DIGITS": "Q8"},
+    "Q8": {"DIGITS": "Q9"},
+    "Q9": {},
+}
+DURATION_ACCEPT = ["Q9"]
 
 # valid operators para sa chunk checking
 VALID_OPERATORS = {
@@ -198,6 +210,7 @@ MACHINES = [
     ("STATE_FLAG",        STATE_FLAG_ACCEPT,      STATE_FLAG_TABLE),
     ("NOISE_WORD",        NOISE_WORD_ACCEPT,      NOISE_WORD_TABLE),
     # literals
+    ("DURATION",           DURATION_ACCEPT,          DURATION_TABLE),
     ("FLOAT_LIT",         FLOAT_ACCEPT,           FLOAT_TABLE),
     ("INT_LIT",           INTEGER_ACCEPT,         INTEGER_TABLE),
     ("IDENTIFIER",        IDENTIFIER_ACCEPT,      IDENTIFIER_TABLE),
@@ -234,11 +247,50 @@ class LexicalError(Exception):
 def is_word_char(c):
     return c.isascii() and (c.isalnum() or c == "_")
 
-
 def end_of_word(text, pos): # san natatapos 
     while pos < len(text) and is_word_char(text[pos]):
         pos += 1
     return pos
+
+def starts_unit(text, pos):
+    return any(
+        text.startswith(unit, pos)
+        and (pos + len(unit) == len(text) or not is_word_char(text[pos + len(unit)]))
+        for unit in UNITS
+    )
+
+# function to check if a space is inside a .to() projection
+def has_spaced_projection(text, pos):
+    cursor = pos + 1
+    has_space = False
+    while cursor < len(text) and text[cursor].isspace():
+        has_space = True
+        cursor += 1
+    if not text.startswith("to", cursor):
+        return False
+    cursor += 2
+    if cursor < len(text) and is_word_char(text[cursor]):
+        return False
+    while cursor < len(text) and text[cursor].isspace():
+        has_space = True
+        cursor += 1
+    return has_space and cursor < len(text) and text[cursor] == "("
+
+# function helper to scans for matching quotes
+def fstring_end(text, pos):
+    quote = text[pos + 1]
+    delimiter = quote * 3 if text.startswith(quote * 3, pos + 1) else quote
+    cursor = pos + 1 + len(delimiter)
+    while cursor < len(text):
+        if text.startswith(delimiter, cursor):
+            return cursor + len(delimiter)
+        if len(delimiter) == 1 and text[cursor] in "\r\n":
+            raise LexicalError("End of line while scanning f-string literal")
+        if text[cursor] == "\\":
+            cursor += 2
+        else:
+            cursor += 1
+    raise LexicalError("Unterminated f-string literal")
 
 
 def next_state(table, state, ch): # san next based sa table
@@ -274,6 +326,18 @@ def tokenize(text):
 
     while pos < len(text): # ask every machine; longest match wins
         ch = text[pos]
+
+        # detect f and F prefix find the end, and tag everything before it as one f-string token
+        if ch in ("f", "F") and pos + 1 < len(text) and text[pos + 1] in ('"', "'"):
+            end = fstring_end(text, pos)
+            tokens.append(("FSTRING_LIT", text[pos:end]))
+            pos = end
+            continue
+
+        # detect if there's a space inside .to() projection
+        if ch == "." and has_spaced_projection(text, pos):
+            raise LexicalError("Whitespace is not allowed inside a .to(...) projection")
+
         # reads the entire continuous sequence of operator characters until
         # hitting whitespace, an alphanumeric character, or a bracket/delimiter
         if ch in OPERATOR_CHARS:
@@ -291,6 +355,7 @@ def tokenize(text):
                 raise LexicalError(
                     f"Invalid operator '{op_chunk}'. Not a recognized operator symbol."
                 )
+       
         # In tokenize(), before the DFA loop:
         if text.startswith('"""', pos):
             closing_idx = text.find('"""', pos + 3)
@@ -319,8 +384,17 @@ def tokenize(text):
                 raise LexicalError("Unterminated string literal")
             raise LexicalError(f"Unexpected character {repr(ch)}. Not a valid member of character set.")
 
+        if best_token == "DURATION" and best_end < len(text) and (
+            is_word_char(text[best_end]) or text[best_end] == ":"
+        ):
+            raise LexicalError(
+                f"Invalid duration '{text[pos:end_of_word(text, best_end)]}'. Expected HH:MM:SS."
+            )
+
         # Rule 1: Identifiers cannot begin with a digit
-        if best_token == "INT_LIT" and best_end < len(text) and (text[best_end].isalpha() or text[best_end] == "_"):
+        if best_token in ("INT_LIT", "FLOAT_LIT") and best_end < len(text) and (
+            text[best_end].isalpha() or text[best_end] == "_"
+        ) and not starts_unit(text, best_end):
             bad_end = end_of_word(text, best_end)
             bad_id = text[pos:bad_end]
             raise LexicalError(f"Invalid identifier '{bad_id}'. Rule 1 violated: Identifiers cannot begin with a digit.")
@@ -329,7 +403,14 @@ def tokenize(text):
         if best_token in WORD_TOKENS and best_end < len(text) and is_word_char(text[best_end]):
             raise LexicalError("Invalid word token (missing delimiter/blank between words)")
 
+        # contextual keywords checker, change their token if character before the word is a .
         lexeme = text[pos:best_end]
+        if best_token == "IDENTIFIER" and pos > 0 and text[pos - 1] == ".":
+            if lexeme == "to":
+                best_token = "KW_PROJECTION"
+            elif lexeme in ("formula", "molecular_weight"):
+                best_token = "KW_MOL_ATTRIBUTE"
+
         if best_token not in ("BLANK", "NEWLINE", "COMMENT"):
             tokens.append((best_token, lexeme))
 
