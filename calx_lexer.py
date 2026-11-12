@@ -11,7 +11,6 @@ GROUPS = {
     "NOT_SINGLE_STRING":  lambda c: c not in ("'", "\\", "\n", "\r"),
 }
 
-
 def word_table(words):
     table = {"Q1": {}}
     accept = []
@@ -58,6 +57,7 @@ IO_KEYWORDS      = ["print", "read"]
 MODULE_KEYWORDS  = ["from", "import"]
 LOGICAL_KEYWORDS = ["is", "not", "and", "or"]
 
+
 TYPE_SPECS = ["Float", "Integer", "Boolean", "String", "mol", "Vector", "Matrix"]
 DIM_CLASSES = ["Length", "Mass", "Time", "Temp", "Pressure", "Energy", "Amount", "Volume", "Dipole", "Data"]
 UNITS = [
@@ -69,6 +69,7 @@ UNITS = [
 STATE_FLAGS = ["converged", "stationary", "radical"]
 NOISE_WORDS = ["the"]
 
+# DFA transition tables and accept states for all keyword/vocabulary groups
 KW_DOMAIN_TABLE, KW_DOMAIN_ACCEPT               = word_table(DOMAIN_KEYWORDS)
 KW_PROJECTION_TABLE, KW_PROJECTION_ACCEPT       = word_table(["to"])
 KW_MOL_ATTRIBUTE_TABLE, KW_MOL_ATTRIBUTE_ACCEPT = word_table(["formula", "molecular_weight"])
@@ -82,7 +83,6 @@ DIM_CLASS_TABLE, DIM_CLASS_ACCEPT               = word_table(DIM_CLASSES)
 UNIT_TABLE, UNIT_ACCEPT                         = word_table(UNITS)
 STATE_FLAG_TABLE, STATE_FLAG_ACCEPT             = word_table(STATE_FLAGS)
 NOISE_WORD_TABLE, NOISE_WORD_ACCEPT             = word_table(NOISE_WORDS)
-
 
 IDENTIFIER_TABLE = {
     "Q1": {"ALPHABET": "Q2", "_": "Q2"},
@@ -117,6 +117,7 @@ DURATION_TABLE = {
 }
 DURATION_ACCEPT = ["Q9"]
 
+# Multi-char and single-char operators
 VALID_OPERATORS = {
     "<=>": "REL_OP",
     "=>":  "REL_OP",
@@ -141,6 +142,7 @@ VALID_OPERATORS = {
     "%":   "ARITH_OP",
 }
 
+# Individual DFA tables for punctuation and structural delimiters
 DELIM_LPAREN_TABLE, DELIM_LPAREN_ACCEPT     = symbol_table("(")
 DELIM_RPAREN_TABLE, DELIM_RPAREN_ACCEPT     = symbol_table(")")
 DELIM_LBRACKET_TABLE, DELIM_LBRACKET_ACCEPT = symbol_table("[")
@@ -200,6 +202,7 @@ BLANK_TABLE = {
 }
 BLANK_ACCEPT = ["Q2"]
 
+# DFA machines evaluated at each cursor position
 MACHINES = [
     ("UNIT",              UNIT_ACCEPT,             UNIT_TABLE),
     ("KW_DOMAIN",         KW_DOMAIN_ACCEPT,        KW_DOMAIN_TABLE),
@@ -233,7 +236,6 @@ MACHINES = [
     ("DELIM_COMMA",       DELIM_COMMA_ACCEPT,      DELIM_COMMA_TABLE),
     ("DELIM_DOT",         DELIM_DOT_ACCEPT,        DELIM_DOT_TABLE),
 
-# Comments, newlines, tabs, blanks
     ("COMMENT",           SINGLE_COMMENT_ACCEPT,   SINGLE_COMMENT_TABLE),
     ("NEWLINE",           NEWLINE_ACCEPT,          NEWLINE_TABLE),
     ("BLANK",             BLANK_ACCEPT,            BLANK_TABLE),
@@ -247,7 +249,6 @@ WORD_TOKENS = {
 
 OPERATOR_CHARS = set("+-*/%^=<>!@")
 DELIMITER_CHARS = set("()[]{},:.")
-
 
 # =============================================================================
 # SCANNER ENGINE
@@ -314,11 +315,11 @@ def longest_match(accept, table, text, pos):
             longest = i
     return longest
 
-
+# Catches errors
 def validate_candidate(text, pos, token_type, end):
     lexeme = text[pos:end]
 
-    # 1. Unterminated multi-line comment (consumes to EOF)
+    # Unterminated multi-line comment (consumes to EOF)
     if text.startswith('"""', pos) and token_type != "MULTI_COMMENT":
         return (
             "LEXICAL_ERROR",
@@ -326,7 +327,7 @@ def validate_candidate(text, pos, token_type, end):
             len(text),
         )
 
-    # 2. .to() projection check
+    # .to() projection check
     if token_type == "DELIM_DOT" and has_spaced_projection(text, pos):
         return (
             "LEXICAL_ERROR",
@@ -334,7 +335,7 @@ def validate_candidate(text, pos, token_type, end):
             end,
         )
 
-    # 3. Duration literal for HH:MM:SS
+    # Duration literal for HH:MM:SS
     if token_type == "DURATION" and end < len(text) and (
         is_word_char(text[end]) or text[end] == ":"
     ):
@@ -347,7 +348,7 @@ def validate_candidate(text, pos, token_type, end):
             bad_end,
         )
 
-    # 4. Calx Rule 1: Identifiers cannot begin with a digit
+    # Calx Rule 1: Identifiers cannot begin with a digit
     if token_type in ("INT_LIT", "FLOAT_LIT") and end < len(text) and (
         text[end].isalpha() or text[end] == "_"
     ):
@@ -359,7 +360,7 @@ def validate_candidate(text, pos, token_type, end):
             bad_end,
         )
 
-    # 5. Unterminated f-string (matched 'f' or 'F' followed by an unclosed quote)
+    # Unterminated f-string 
     if token_type == "IDENTIFIER" and lexeme in ("f", "F") and end < len(text) and text[end] in ('"', "'"):
         eol = end_of_line(text, pos)
         return (
@@ -368,7 +369,7 @@ def validate_candidate(text, pos, token_type, end):
             eol,
         )
 
-    # 6. Triple-quoted f-strings disallowed
+    # Triple-quoted f-strings disallowed
     if token_type == "FSTRING_LIT" and pos + 3 < len(text) and (
         text[pos] in ("f", "F")
         and text[pos + 1] in ('"', "'")
@@ -380,7 +381,7 @@ def validate_candidate(text, pos, token_type, end):
             end,
         )
 
-    # 7. Missing delimiter/space between adjacent word tokens
+    # Missing delimiter/space between adjacent word tokens
     if token_type in WORD_TOKENS and end < len(text) and is_word_char(text[end]):
         bad_end = end_of_word(text, end)
         return (
@@ -389,7 +390,7 @@ def validate_candidate(text, pos, token_type, end):
             bad_end,
         )
 
-    # 8. Contextual check: 'to', 'formula', 'molecular_weight' are only keywords after '.'
+    # Contextual check: 'to', 'formula', 'molecular_weight' are only keywords after '.'
     if token_type in ("KW_PROJECTION", "KW_MOL_ATTRIBUTE") and (
         pos == 0 or text[pos - 1] != "."
     ):
@@ -406,7 +407,7 @@ def tokenize(text):
     while pos < len(text):
         ch = text[pos]
 
-        # 1. Whole-Operator Chunking
+        # Whole-Operator Chunking
         if ch in OPERATOR_CHARS:
             end = pos
             while end < len(text) and text[end] in OPERATOR_CHARS:
@@ -423,7 +424,7 @@ def tokenize(text):
             pos = end
             continue
 
-        # 2. Table-driven DFA matching
+        # Table-driven DFA matching
         best_token, best_end = None, pos
         for token_type, accept, table in MACHINES:
             end = longest_match(accept, table, text, pos)
@@ -460,7 +461,7 @@ def tokenize(text):
                 pos += 1
             continue
 
-        # 3. Validate matched token and recover past any errors
+        # Validate matched token
         resolved_type, lexeme, next_pos = validate_candidate(text, pos, best_token, best_end)
 
         if resolved_type not in ("BLANK", "COMMENT", "MULTI_COMMENT"):
@@ -469,7 +470,6 @@ def tokenize(text):
         pos = next_pos
 
     return tokens
-
 
 # =============================================================================
 # TERMINAL
