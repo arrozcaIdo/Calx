@@ -122,13 +122,21 @@
 
     <!-- Quick Action Controls -->
     <div class="flex items-center gap-2 text-xs">
-      <button id="clear-term-btn" class="px-3 py-1.5 rounded-lg bg-chemblue-850 hover:bg-chemblue-800 text-slate-300 hover:text-white border border-chemblue-700/80 hover:border-dandelion-400/60 transition flex items-center gap-1.5 font-medium shadow-sm active:scale-95" title="Clear terminal screen and reset token state">
+      <!-- Multi-line Script Editor Toggle Button -->
+      <button id="toggle-editor-btn" type="button" class="px-3 py-1.5 rounded-lg bg-dandelion-400/15 hover:bg-dandelion-400/25 text-dandelion-300 border border-dandelion-400/50 hover:border-dandelion-300 transition flex items-center gap-1.5 font-medium shadow-sm active:scale-95" title="Open multi-line Calx script editor">
+        <svg class="w-4 h-4 text-dandelion-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+        </svg>
+        <span id="editor-btn-text">Multi-line Script Editor</span>
+      </button>
+
+      <!-- Clear Button -->
+      <button id="clear-term-btn" type="button" class="px-3 py-1.5 rounded-lg bg-chemblue-850 hover:bg-chemblue-800 text-slate-300 hover:text-white border border-chemblue-700/80 hover:border-dandelion-400/60 transition flex items-center gap-1.5 font-medium shadow-sm active:scale-95" title="Clear terminal screen and reset token state">
         <svg class="w-4 h-4 text-dandelion-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
         </svg>
         <span>Clear</span>
       </button>
-
     </div>
   </header>
 
@@ -137,18 +145,19 @@
 
     <!-- Collapsible Multi-line Script Editor Panel -->
     <div id="editor-panel" class="hidden bg-chemblue-900 border border-chemblue-700 rounded-xl overflow-hidden shadow-2xl transition-all">
-      <div class="bg-chemblue-850 px-4 py-2.5 border-b border-chemblue-700/80 flex items-center justify-between">
+      <div class="bg-chemblue-850 px-4 py-2.5 border-b border-chemblue-700/80 flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           <span class="w-3 h-3 rounded-full bg-dandelion-400 inline-block shadow-sm shadow-dandelion-400/50"></span>
           <span class="text-xs font-semibold text-dandelion-300 uppercase tracking-wider font-mono">Calx Source Editor (.clx)</span>
-          <span class="text-[11px] text-chemblue-300 font-normal hidden md:inline">Strict 4-space Off-side indentation rules</span>
+          <span class="text-[11px] text-chemblue-300 font-normal hidden md:inline">Press Ctrl + Enter or click Tokenize Script</span>
         </div>
         <div class="flex items-center gap-2">
-          <button id="load-sample-script-btn" class="text-xs text-chemblue-300 hover:text-white font-medium px-2 py-1 rounded hover:bg-chemblue-800 transition">
-            Load Chemistry Demo
+
+          <button id="clear-editor-btn" type="button" class="text-xs text-slate-400 hover:text-white font-medium px-2.5 py-1 rounded hover:bg-chemblue-800 transition">
+            Clear Editor
           </button>
-          <button id="run-script-btn" class="px-3 py-1.5 rounded-lg bg-dandelion-400/15 hover:bg-dandelion-400/25 text-dandelion-300 border border-dandelion-400/50 hover:border-dandelion-300 transition font-medium text-xs active:scale-95 flex items-center gap-1.5 shadow-sm">
-            <svg class="w-4 h-4 text-dandelion-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button id="run-script-btn" type="button" class="px-3 py-1.5 rounded-lg bg-dandelion-400 hover:bg-dandelion-300 text-chemblue-950 font-semibold text-xs active:scale-95 flex items-center gap-1.5 shadow-sm transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
@@ -157,14 +166,8 @@
         </div>
       </div>
       <div class="p-3 bg-chemblue-950/70">
-        <textarea id="script-textarea" rows="9" spellcheck="false" class="w-full bg-chemblue-950 text-slate-100 font-mono text-xs sm:text-sm p-3.5 rounded-lg border border-chemblue-800 focus:border-dandelion-400 focus:outline-none focus:ring-1 focus:ring-dandelion-400 resize-y leading-relaxed" placeholder="# Enter Calx multi-line code here (use 4 spaces for block indentations)...
-task heavy_opt:
-    scheduler: &quot;slurm&quot;
-    cpus: 16
-    memory: 64 GB
-    walltime: 24:00:00
-
-run the heavy_opt"></textarea>
+        <textarea id="script-textarea" rows="9" spellcheck="false" class="w-full bg-chemblue-950 text-slate-100 font-mono text-xs sm:text-sm p-3.5 rounded-lg border border-chemblue-800 focus:border-dandelion-400 focus:outline-none focus:ring-1 focus:ring-dandelion-400 resize-y leading-relaxed" placeholder="
+"></textarea>
       </div>
     </div>
 
@@ -183,7 +186,7 @@ run the heavy_opt"></textarea>
           <!-- Terminal Title & Status -->
           <div class="flex items-center gap-2">
             <span class="text-xs font-mono font-semibold text-slate-200 flex items-center gap-1.5">
-              <span class="text-dandelion-400"></span> Calx Lexer Terminal
+              Calx Lexer Terminal
             </span>
             <span class="text-[10px] font-mono bg-chemblue-800 text-chemblue-300 px-1.5 py-0.5 rounded border border-chemblue-700">
               Statically Typed DSL
@@ -191,7 +194,7 @@ run the heavy_opt"></textarea>
           </div>
         </div>
 
-        <!-- Terminal Stats & Export Controls -->
+        <!-- Terminal Stats -->
         <div class="text-[11px] font-mono text-chemblue-300 flex items-center gap-2">
           <span class="text-chemblue-700">|</span>
           <span id="token-count-display" class="text-slate-300 font-medium">Tokens: 0</span>
@@ -200,8 +203,7 @@ run the heavy_opt"></textarea>
 
       <!-- Terminal Output Scroll Area -->
       <div id="terminal-screen" class="flex-1 p-4 font-mono text-xs sm:text-sm overflow-y-auto space-y-3 leading-relaxed bg-[#050b18]">
-        
-      <div id="terminal-history" class="space-y-4"></div>
+        <div id="terminal-history" class="space-y-4"></div>
 
         <!-- Active Interactive Prompt Line -->
         <div id="active-prompt-row" class="flex items-start gap-2 pt-1">
@@ -215,7 +217,6 @@ run the heavy_opt"></textarea>
               autocapitalize="off" 
               spellcheck="false" 
               class="w-full bg-transparent text-slate-100 outline-none border-none p-0 focus:ring-0 font-mono text-xs sm:text-sm placeholder-chemblue-600"
-             
             />
           </div>
         </div>
@@ -233,8 +234,9 @@ run the heavy_opt"></textarea>
           <span class="flex items-center gap-1">
             <kbd class="px-1.5 py-0.5 rounded bg-chemblue-850 border border-chemblue-700 text-dandelion-300 text-[10px]">clear</kbd> wipe view &amp; tokens
           </span>
-        </div>
-        <div class="text-chemblue-400 flex items-center gap-1.5">
+          <span class="flex items-center gap-1">
+            <kbd class="px-1.5 py-0.5 rounded bg-chemblue-850 border border-chemblue-700 text-dandelion-300 text-[10px]">help</kbd> reference
+          </span>
         </div>
       </div>
 
@@ -258,7 +260,7 @@ run the heavy_opt"></textarea>
             <p class="text-[11px] text-chemblue-300">Complete formal reference of lexical classifications, reserved tokens, and DFA constraints</p>
           </div>
         </div>
-        <button id="close-help-btn" class="text-chemblue-300 hover:text-white p-1.5 rounded-lg hover:bg-chemblue-800 transition" title="Close reference">
+        <button id="close-help-btn" type="button" class="text-chemblue-300 hover:text-white p-1.5 rounded-lg hover:bg-chemblue-800 transition" title="Close reference">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
@@ -309,7 +311,6 @@ run the heavy_opt"></textarea>
 
         <!-- Category: Type Specifiers & Dimension Classes -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- TYPE_SPEC -->
           <section class="space-y-2 bg-chemblue-950/70 p-3.5 rounded-xl border border-chemblue-800">
             <div class="flex items-center gap-2 border-b border-chemblue-800/80 pb-1.5">
               <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-sky-950 text-sky-300 border border-sky-600">
@@ -329,7 +330,6 @@ run the heavy_opt"></textarea>
             </div>
           </section>
 
-          <!-- DIM_CLASS -->
           <section class="space-y-2 bg-chemblue-950/70 p-3.5 rounded-xl border border-chemblue-800">
             <div class="flex items-center gap-2 border-b border-chemblue-800/80 pb-1.5">
               <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-dandelion-400/20 text-dandelion-300 border border-dandelion-400/60 font-semibold">
@@ -525,7 +525,7 @@ run the heavy_opt"></textarea>
       <!-- Modal Footer -->
       <div class="p-3.5 bg-chemblue-850 border-t border-chemblue-800 flex items-center justify-between">
         <span class="text-[11px] text-chemblue-400 font-mono">Calx Lexer Grammar Specification v2.4</span>
-        <button id="close-help-btn-2" class="px-3 py-1.5 rounded-lg bg-dandelion-400/15 hover:bg-dandelion-400/25 text-dandelion-300 border border-dandelion-400/50 hover:border-dandelion-300 transition font-medium text-xs active:scale-95 flex items-center gap-1.5 shadow-sm">
+        <button id="close-help-btn-2" type="button" class="px-3 py-1.5 rounded-lg bg-dandelion-400/15 hover:bg-dandelion-400/25 text-dandelion-300 border border-dandelion-400/50 hover:border-dandelion-300 transition font-medium text-xs active:scale-95 flex items-center gap-1.5 shadow-sm">
           <span>Close Reference</span>
         </button>
       </div>
@@ -533,373 +533,8 @@ run the heavy_opt"></textarea>
     </div>
   </div>
 
-  <!-- Terminal Client Logic & Full In-Browser Lexer Engine -->
+  <!-- Terminal Client Logic -->
   <script>
-    // =========================================================================
-    // Calx in-browser lexer fallback for offline or standalone execution.
-    // =========================================================================
-    class ClientCalxLexer {
-      constructor(source) {
-        this.source = source;
-        this.pos = 0;
-        this.length = source.length;
-        this.line = 1;
-        this.col = 1;
-        this.tokens = [];
-        this.indentStack = [0];
-        this.bracketDepth = 0;
-        this.atLineStart = true;
-
-        this.KEYWORDS = new Set([
-          "reaction", "theory", "task", "run", "compound", "contract",
-          "if", "elif", "else", "for", "in", "print", "read", "range",
-          "from", "import", "on_success", "on_failure", "is", "not", "and", "or",
-          "scheduler", "cpus", "memory", "walltime"
-        ]);
-        this.TYPE_SPECS = new Set([
-          "Float", "Integer", "Boolean", "String", "mol", "Vector", "Matrix"
-        ]);
-        this.DIM_CLASSES = new Set([
-          "Length", "Mass", "Time", "Temp", "Pressure", "Energy",
-          "Amount", "Volume", "Dipole", "Data"
-        ]);
-        this.UNITS = new Set([
-          "Kelvin", "Celsius", "kg", "g", "mg", "m", "km", "cm", "nm", "Angstrom",
-          "mol", "mmol", "L", "mL", "Joule", "Debye", "kJ", "kcal/mol",
-          "kJ/mol", "Hartree", "eV", "s", "fs", "ps", "ns", "bar", "atm",
-          "Pa", "GB", "MB"
-        ]);
-        this.STATE_FLAGS = new Set(["converged", "stationary", "radical"]);
-        this.NOISE_WORDS = new Set(["the"]);
-      }
-
-      peek(offset = 0) {
-        const idx = this.pos + offset;
-        return idx < this.length ? this.source[idx] : "";
-      }
-
-      advance() {
-        const ch = this.peek();
-        this.pos++;
-        this.col++;
-        return ch;
-      }
-
-      matchStr(str) {
-        if (this.source.substr(this.pos, str.length) === str) {
-          this.pos += str.length;
-          this.col += str.length;
-          return true;
-        }
-        return false;
-      }
-
-      hasSpacedProjectionAt(pos) {
-        let cursor = pos + 1;
-        let hasSpace = false;
-        while (/\s/.test(this.source[cursor] || "")) {
-          hasSpace = true;
-          cursor++;
-        }
-        if (this.source.substr(cursor, 2) !== "to" || /[A-Za-z0-9_]/.test(this.source[cursor + 2] || "")) {
-          return false;
-        }
-        cursor += 2;
-        while (/\s/.test(this.source[cursor] || "")) {
-          hasSpace = true;
-          cursor++;
-        }
-        return hasSpace && this.source[cursor] === "(";
-      }
-
-      scanFString(startLine, startCol) {
-        const start = this.pos;
-        const quote = this.source[start + 1];
-        let cursor = start + 2;
-        let closed = false;
-
-        while (cursor < this.length) {
-          if (this.source[cursor] === quote) {
-            cursor++;
-            closed = true;
-            break;
-          }
-          const ch = this.source[cursor];
-          if (ch === "\r" || ch === "\n") {
-            throw new Error(`Line ${startLine}: EOL while scanning f-string literal.`);
-          }
-          cursor += ch === "\\" ? 2 : 1;
-        }
-
-        if (!closed) throw new Error(`Line ${startLine}: Unterminated f-string literal.`);
-
-        const value = this.source.slice(start, cursor);
-        const lineBreaks = value.match(/\r\n|\r|\n/g) || [];
-        this.line += lineBreaks.length;
-        if (lineBreaks.length) {
-          this.col = value.length - Math.max(value.lastIndexOf("\r"), value.lastIndexOf("\n"));
-        } else {
-          this.col += value.length;
-        }
-        this.pos = cursor;
-        this.tokens.push({ type: "FSTRING_LIT", value, line: startLine, column: startCol });
-      }
-
-      tokenize() {
-        while (this.pos < this.length) {
-          // 1. Off-side Indentation Rule
-          if (this.atLineStart) {
-            let spaces = 0;
-            const startCol = this.col;
-
-            while (this.peek() === " " || this.peek() === "\t") {
-              if (this.peek() === " ") spaces++;
-              else spaces += 4;
-              this.pos++;
-              this.col++;
-            }
-
-            const ch = this.peek();
-            if (ch === "\r" || ch === "\n" || ch === "#") {
-              if (ch === "\r" && this.peek(1) === "\n") this.pos += 2;
-              else if (ch === "\r" || ch === "\n") this.pos += 1;
-              else if (ch === "#") {
-                while (this.peek() && this.peek() !== "\r" && this.peek() !== "\n") this.advance();
-                if (this.peek() === "\r" && this.peek(1) === "\n") this.pos += 2;
-                else if (this.peek() === "\r" || this.peek() === "\n") this.pos += 1;
-              }
-              this.line++;
-              this.col = 1;
-              continue;
-            }
-
-            if (this.pos >= this.length) break;
-            this.atLineStart = false;
-
-            if (this.bracketDepth === 0) {
-              const currentIndent = spaces;
-              const topIndent = this.indentStack[this.indentStack.length - 1];
-
-              if (currentIndent > topIndent) {
-                if (currentIndent % 4 !== 0) {
-                  throw new Error(`Line ${this.line}: Indentation must be in increments of 4 spaces (found ${currentIndent} spaces).`);
-                }
-                this.indentStack.push(currentIndent);
-                this.tokens.push({ type: "INDENT", value: " ".repeat(currentIndent - topIndent), line: this.line, column: startCol });
-              } else {
-                while (currentIndent < this.indentStack[this.indentStack.length - 1]) {
-                  this.indentStack.pop();
-                  this.tokens.push({ type: "DEDENT", value: "", line: this.line, column: startCol });
-                }
-                if (currentIndent !== this.indentStack[this.indentStack.length - 1]) {
-                  throw new Error(`Line ${this.line}: Unaligned dedent matching no outer indentation level.`);
-                }
-              }
-            }
-          }
-
-          // 2. Token classification
-          const startLine = this.line;
-          const startCol = this.col;
-          const ch = this.peek();
-
-          if (ch === "." && this.hasSpacedProjectionAt(this.pos)) {
-            throw new Error("Whitespace is not allowed inside a .to(...) projection.");
-          }
-
-          // Whitespace
-          if (ch === " " || ch === "\t") {
-            this.advance();
-            continue;
-          }
-
-          // Newlines
-          if (ch === "\r" || ch === "\n") {
-            if (ch === "\r" && this.peek(1) === "\n") this.pos += 2;
-            else this.pos += 1;
-            this.line++;
-            this.col = 1;
-            this.atLineStart = true;
-            if (this.bracketDepth === 0) {
-              this.tokens.push({ type: "NEWLINE", value: "\\n", line: startLine, column: startCol });
-            }
-            continue;
-          }
-
-          // Single-line Comments
-          if (ch === "#") {
-            while (this.peek() && this.peek() !== "\r" && this.peek() !== "\n") this.advance();
-            continue;
-          }
-
-          // F-strings are emitted as one opaque literal token.
-          if ((ch === "f" || ch === "F") && (this.peek(1) === '"' || this.peek(1) === "'")) {
-            const quote = this.peek(1);
-            if (this.source.substr(this.pos + 1, 3) === quote.repeat(3)) {
-              throw new Error("Triple-quoted f-strings are not supported.");
-            }
-            this.scanFString(startLine, startCol);
-            continue;
-          }
-
-          // Multi-line docstring
-          if (this.matchStr('"""')) {
-            let val = '"""';
-            let closed = false;
-            while (this.pos < this.length) {
-              if (this.matchStr('"""')) {
-                val += '"""';
-                closed = true;
-                break;
-              }
-              const c = this.advance();
-              val += c;
-              if (c === "\n") { this.line++; this.col = 1; }
-            }
-            if (!closed) throw new Error(`Line ${startLine}: Unterminated multi-line comment.`);
-            this.tokens.push({ type: "STRING_LIT", value: val, line: startLine, column: startCol });
-            continue;
-          }
-
-          // String literals
-          if (this.peek() === '"' || this.peek() === "'") {
-            const quote = this.advance();
-            let val = quote;
-            let closed = false;
-            while (this.pos < this.length) {
-              const c = this.advance();
-              val += c;
-              if (c === "\\") {
-                if (this.pos < this.length) val += this.advance();
-              } else if (c === quote) {
-                closed = true;
-                break;
-              } else if (c === "\r" || c === "\n") {
-                throw new Error(`Line ${startLine}: EOL while scanning string literal.`);
-              }
-            }
-            if (!closed) throw new Error(`Line ${startLine}: Unterminated string literal.`);
-            this.tokens.push({ type: "STRING_LIT", value: val, line: startLine, column: startCol });
-            continue;
-          }
-
-          // Multi-char operators
-          if (this.matchStr("<=>")) { this.tokens.push({ type: "<=>", value: "<=>", line: startLine, column: startCol }); continue; }
-          if (this.matchStr("=>")) { this.tokens.push({ type: "=>", value: "=>", line: startLine, column: startCol }); continue; }
-          if (this.matchStr("->")) { this.tokens.push({ type: "->", value: "->", line: startLine, column: startCol }); continue; }
-          if (this.matchStr("<=")) { this.tokens.push({ type: "REL_OP", value: "<=", line: startLine, column: startCol }); continue; }
-          if (this.matchStr(">=")) { this.tokens.push({ type: "REL_OP", value: ">=", line: startLine, column: startCol }); continue; }
-          if (this.matchStr("==")) { this.tokens.push({ type: "REL_OP", value: "==", line: startLine, column: startCol }); continue; }
-          if (this.matchStr("!=")) { this.tokens.push({ type: "REL_OP", value: "!=", line: startLine, column: startCol }); continue; }
-          if (this.matchStr("+=")) { this.tokens.push({ type: "COMP_ASSIGN", value: "+=", line: startLine, column: startCol }); continue; }
-          if (this.matchStr("-=")) { this.tokens.push({ type: "COMP_ASSIGN", value: "-=", line: startLine, column: startCol }); continue; }
-          if (this.matchStr("*=")) { this.tokens.push({ type: "COMP_ASSIGN", value: "*=", line: startLine, column: startCol }); continue; }
-          if (this.matchStr("/=")) { this.tokens.push({ type: "COMP_ASSIGN", value: "/=", line: startLine, column: startCol }); continue; }
-
-          // Compound Physical Units
-          if (this.matchStr("kcal/mol")) { this.tokens.push({ type: "UNIT", value: "kcal/mol", line: startLine, column: startCol }); continue; }
-          if (this.matchStr("kJ/mol")) { this.tokens.push({ type: "UNIT", value: "kJ/mol", line: startLine, column: startCol }); continue; }
-
-          // Numbers & Leading-digit identifier rejection
-          if (/\d/.test(ch)) {
-            const durationMatch = this.source.substring(this.pos).match(/^[0-9]{2,}:[0-9]{2}:[0-9]{2}/);
-            if (durationMatch) {
-              const next = this.source[this.pos + durationMatch[0].length] || "";
-              if (/[a-zA-Z0-9_:]/.test(next)) {
-                throw new Error(`Invalid duration '${durationMatch[0]}'. Expected HH:MM:SS.`);
-              }
-              this.matchStr(durationMatch[0]);
-              this.tokens.push({ type: "DURATION", value: durationMatch[0], line: startLine, column: startCol });
-              continue;
-            }
-
-            let numStr = "";
-            let hasDot = false;
-            while (/\d/.test(this.peek()) || (this.peek() === "." && !hasDot && /\d/.test(this.peek(1)))) {
-              if (this.peek() === ".") hasDot = true;
-              numStr += this.advance();
-            }
-            if (/[a-zA-Z_]/.test(this.peek())) {
-              let badId = numStr;
-              while (/[a-zA-Z0-9_]/.test(this.peek())) badId += this.advance();
-              throw new Error(`Lexical error at line ${startLine}: Invalid identifier '${badId}'. Rule 1 violated: Identifiers cannot begin with a digit.`);
-            }
-            this.tokens.push({ type: hasDot ? "FLOAT_LIT" : "INT_LIT", value: numStr, line: startLine, column: startCol });
-            continue;
-          }
-
-          // Identifiers & Reserved Keywords
-          if (/[a-zA-Z_]/.test(ch)) {
-            const wordStart = this.pos;
-            let word = "";
-            while (/[a-zA-Z0-9_]/.test(this.peek())) word += this.advance();
-
-            if (this.peek() === "-" && /[a-zA-Z0-9_]/.test(this.peek(1))) {
-              word += this.advance();
-              while (/[a-zA-Z0-9_\-]/.test(this.peek())) word += this.advance();
-              throw new Error(`Lexical error at line ${startLine}, col ${startCol}: Invalid identifier '${word}'. Rule 5 violated: Hyphens are not allowed inside identifiers.`);
-            }
-
-            if (wordStart > 0 && this.source[wordStart - 1] === "." && word === "to") {
-              this.tokens.push({ type: "KW_PROJECTION", value: word, line: startLine, column: startCol });
-            } else if (wordStart > 0 && this.source[wordStart - 1] === "." && (word === "formula" || word === "molecular_weight")) {
-              this.tokens.push({ type: "KW_MOL_ATTRIBUTE", value: word, line: startLine, column: startCol });
-            } else if (this.KEYWORDS.has(word)) {
-              this.tokens.push({ type: "KEYWORD", value: word, line: startLine, column: startCol });
-            } else if (this.TYPE_SPECS.has(word)) {
-              this.tokens.push({ type: "TYPE_SPEC", value: word, line: startLine, column: startCol });
-            } else if (this.DIM_CLASSES.has(word)) {
-              this.tokens.push({ type: "DIM_CLASS", value: word, line: startLine, column: startCol });
-            } else if (this.UNITS.has(word)) {
-              this.tokens.push({ type: "UNIT", value: word, line: startLine, column: startCol });
-            } else if (this.STATE_FLAGS.has(word)) {
-              this.tokens.push({ type: "STATE_FLAG", value: word, line: startLine, column: startCol });
-            } else if (this.NOISE_WORDS.has(word)) {
-              this.tokens.push({ type: "NOISE_WORD", value: word, line: startLine, column: startCol });
-            } else {
-              this.tokens.push({ type: "IDENTIFIER", value: word, line: startLine, column: startCol });
-            }
-            continue;
-          }
-
-          // Delimiters
-          if (ch === "(" || ch === "[" || ch === "{") {
-            this.bracketDepth++;
-            this.tokens.push({ type: ch, value: this.advance(), line: startLine, column: startCol });
-            continue;
-          }
-          if (ch === ")" || ch === "]" || ch === "}") {
-            if (this.bracketDepth > 0) this.bracketDepth--;
-            this.tokens.push({ type: ch, value: this.advance(), line: startLine, column: startCol });
-            continue;
-          }
-
-          // Single punctuation & Operators
-          const singles = {
-            "@": "MATMUL", "^": "EXPONENT", "=": "ASSIGN", "<": "REL_OP",
-            ">": "REL_OP", "+": "ARITH_OP", "-": "ARITH_OP", "*": "ARITH_OP",
-            "/": "ARITH_OP", "%": "ARITH_OP", ":": ":", ",": ",", ".": "."
-          };
-          if (singles[ch]) {
-            this.tokens.push({ type: singles[ch], value: this.advance(), line: startLine, column: startCol });
-            continue;
-          }
-
-          throw new Error(`Lexical error at line ${startLine}, col ${startCol}: Unexpected character '${ch}'. Not a valid member of character set.`);
-        }
-
-        while (this.indentStack.length > 1) {
-          this.indentStack.pop();
-          this.tokens.push({ type: "DEDENT", value: "", line: this.line, column: this.col });
-        }
-        this.tokens.push({ type: "EOF", value: "", line: this.line, column: this.col });
-        return this.tokens;
-      }
-    }
-
-    // =========================================================================
-    // UI Controller
-    // =========================================================================
     const terminalHistory = document.getElementById("terminal-history");
     const terminalInput = document.getElementById("terminal-input");
     const terminalScreen = document.getElementById("terminal-screen");
@@ -908,6 +543,7 @@ run the heavy_opt"></textarea>
     const toggleEditorBtn = document.getElementById("toggle-editor-btn");
     const editorPanel = document.getElementById("editor-panel");
     const runScriptBtn = document.getElementById("run-script-btn");
+    const clearEditorBtn = document.getElementById("clear-editor-btn");
     const loadSampleScriptBtn = document.getElementById("load-sample-script-btn");
     const scriptTextarea = document.getElementById("script-textarea");
     const helpBtn = document.getElementById("help-btn");
@@ -918,18 +554,17 @@ run the heavy_opt"></textarea>
     let commandHistory = [];
     let historyIndex = -1;
     let totalTokensScanned = 0;
-    let latestTokensList = [];
 
-    // Yellow & Blue themed token badges
     function getBadgeClass(type) {
+      if (type === "LEXICAL_ERROR") {
+        return "bg-rose-950/90 text-rose-300 border border-rose-500 font-bold";
+      }
+      if (type.startsWith("KW_") || type === "KEYWORD") {
+        return "bg-chemblue-700/80 text-chemblue-100 border border-chemblue-400 font-semibold";
+      }
       switch (type) {
-        case "KEYWORD":
-          return "bg-chemblue-700/80 text-chemblue-100 border border-chemblue-400 font-semibold";
         case "TYPE_SPEC":
           return "bg-sky-950 text-sky-300 border border-sky-600";
-        case "KW_PROJECTION":
-        case "KW_MOL_ATTRIBUTE":
-          return "bg-chemblue-700/80 text-chemblue-100 border border-chemblue-400 font-semibold";
         case "DIM_CLASS":
           return "bg-dandelion-400/20 text-dandelion-300 border border-dandelion-400/60 font-semibold";
         case "UNIT":
@@ -966,6 +601,15 @@ run the heavy_opt"></textarea>
       }
     }
 
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function renderTokenTable(tokens) {
       const displayTokens = tokens.length > 1 ? tokens.filter(t => t.type !== "EOF") : tokens;
 
@@ -982,18 +626,20 @@ run the heavy_opt"></textarea>
               <tbody class="divide-y divide-chemblue-900/80 text-slate-200">
       `;
 
-      displayTokens.forEach(t => {
-        const badge = getBadgeClass(t.type);
-        const safeVal = t.value === "\\n" ? "\\n (newline)" : (t.value === "" ? `[${t.type}]` : t.value);
+        displayTokens.forEach(t => {
+                const badge = getBadgeClass(t.type);
+                const safeVal = (t.type === "NEWLINE" || t.value === "\n" || t.value === "\\n")
+                  ? "\\n (newline)"
+                  : (t.value === "" ? `[${t.type}]` : t.value);
+                const valColor = t.type === "LEXICAL_ERROR" ? "text-rose-300" : "text-dandelion-200";
         html += `
           <tr class="hover:bg-chemblue-850/50 transition">
-
             <td class="py-1 px-3">
               <span class="inline-block px-2 py-0.5 rounded text-[11px] ${badge}">
-                ${t.type}
+                ${escapeHtml(t.type)}
               </span>
             </td>
-            <td class="py-1 px-3 text-dandelion-200 font-medium break-all">
+            <td class="py-1 px-3 ${valColor} font-medium break-all whitespace-pre-wrap">
               ${escapeHtml(safeVal)}
             </td>
           </tr>
@@ -1006,22 +652,11 @@ run the heavy_opt"></textarea>
           </div>
           <div class="bg-chemblue-900/70 px-3 py-1.5 text-[11px] text-chemblue-300 border-t border-chemblue-800 flex justify-between items-center">
             <span>Successfully scanned: <strong class="text-dandelion-400 font-bold">${displayTokens.length}</strong> token(s)</span>
-            <span class="text-chemblue-400 font-mono flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-dandelion-400"></span>
-            </span>
+            <span class="w-1.5 h-1.5 rounded-full bg-dandelion-400"></span>
           </div>
         </div>
       `;
       return html;
-    }
-
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
     }
 
     async function executeCalxInput(code) {
@@ -1037,66 +672,46 @@ run the heavy_opt"></textarea>
       promptHeader.className = "flex items-start gap-2";
       promptHeader.innerHTML = `
         <span class="text-dandelion-400 font-bold select-none text-xs sm:text-sm">calx&gt;</span>
-        <span class="text-slate-200 font-mono whitespace-pre-wrap break-all">${escapeHtml(code)}</span>
+        <pre class="text-slate-200 font-mono whitespace-pre-wrap break-all m-0">${escapeHtml(code)}</pre>
       `;
       row.appendChild(promptHeader);
 
-      let tokenResult = null;
-      let errorResult = null;
-
-      // 1. Attempt local Python server endpoint
       try {
         const response = await fetch("/tokenize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: code })
         });
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            tokenResult = result.tokens;
-          } else {
-            errorResult = result.error;
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          totalTokensScanned += result.tokens.length;
+          if (tokenCountDisplay) {
+            tokenCountDisplay.textContent = `Tokens: ${totalTokensScanned}`;
           }
+
+          const tableContainer = document.createElement("div");
+          tableContainer.innerHTML = renderTokenTable(result.tokens);
+          row.appendChild(tableContainer);
+        } else {
+          const errBox = document.createElement("div");
+          errBox.className = "mt-2 p-3 rounded-lg bg-rose-950/70 border border-rose-800 text-rose-300 text-xs font-mono space-y-1 shadow-md";
+          errBox.innerHTML = `
+            <div class="flex items-center gap-2 font-bold text-rose-400">
+              <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+              </svg>
+              <span>LexicalError:</span>
+            </div>
+            <p class="pl-6 text-rose-200">${escapeHtml(result.error || "Syntax rejection.")}</p>
+          `;
+          row.appendChild(errBox);
         }
       } catch (err) {
-        // Fallback to internal client lexer
-      }
-
-      // 2. Client-side fallback if server is offline or unavailable
-      if (!tokenResult && !errorResult) {
-        try {
-          const lexer = new ClientCalxLexer(code);
-          tokenResult = lexer.tokenize();
-        } catch (err) {
-          errorResult = err.message;
-        }
-      }
-
-      // Render tokens or error block
-      if (tokenResult) {
-        latestTokensList = tokenResult;
-        totalTokensScanned += tokenResult.length;
-        if (tokenCountDisplay) {
-          tokenCountDisplay.textContent = `Tokens: ${totalTokensScanned}`;
-        }
-
-        const tableContainer = document.createElement("div");
-        tableContainer.innerHTML = renderTokenTable(tokenResult);
-        row.appendChild(tableContainer);
-      } else {
-        latestTokensList = [];
         const errBox = document.createElement("div");
-        errBox.className = "mt-2 p-3 rounded-lg bg-rose-950/70 border border-rose-800 text-rose-300 text-xs font-mono space-y-1 shadow-md";
-        errBox.innerHTML = `
-          <div class="flex items-center gap-2 font-bold text-rose-400">
-            <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-            </svg>
-            <span>LexicalError:</span>
-          </div>
-          <p class="pl-6 text-rose-200">${escapeHtml(errorResult || "Syntax rejection.")}</p>
-        `;
+        errBox.className = "mt-2 p-3 rounded-lg bg-rose-950/70 border border-rose-800 text-rose-300 text-xs font-mono";
+        errBox.textContent = "Server connection error: Make sure server.py is running at http://localhost:8000/.";
         row.appendChild(errBox);
       }
 
@@ -1165,6 +780,7 @@ run the heavy_opt`;
       executeCalxInput(sample);
     }
 
+    // Multi-line Script Editor Toggle Button
     if (toggleEditorBtn && editorPanel) {
       toggleEditorBtn.addEventListener("click", () => {
         editorPanel.classList.toggle("hidden");
@@ -1187,24 +803,36 @@ run the heavy_opt`;
       });
     }
 
-    // Tab key 4 spaces indentation
+    // Clear Editor Button
+    if (clearEditorBtn && scriptTextarea) {
+      clearEditorBtn.addEventListener("click", () => {
+        scriptTextarea.value = "";
+        scriptTextarea.focus();
+      });
+    }
+
+    // Tab 4-space indentation & Ctrl+Enter submission in multi-line textarea
     if (scriptTextarea) {
       scriptTextarea.addEventListener("keydown", function(e) {
         if (e.key === "Tab") {
           e.preventDefault();
           const start = this.selectionStart;
           const end = this.selectionEnd;
-
-          // Insert Calx's required 4 spaces
           this.value = this.value.substring(0, start) + "    " + this.value.substring(end);
           this.selectionStart = this.selectionEnd = start + 4;
+        } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          const scriptCode = this.value;
+          if (scriptCode && scriptCode.trim()) {
+            executeCalxInput(scriptCode);
+          }
         }
       });
     }
 
     if (loadSampleScriptBtn && scriptTextarea) {
       loadSampleScriptBtn.addEventListener("click", () => {
-        scriptTextarea.value = `# Calx Geometry Optimization & Slurm Task
+        scriptTextarea.value = `
 reaction WaterSynthesis:
     equation: 2 compound("H2") + 1 compound("O2") => 2 compound("H2O")
 
@@ -1220,7 +848,7 @@ task optimize_solute(solute: mol):
     memory: 64 GB
     walltime: 02:00:00
     on_success:
-        print(f"Convergence achieved for {solute.formula}.")
+        print(f"Convergence achieved for:\\t{solute.formula}\\n")
     on_failure:
         print("Calculation failed or exceeded cluster walltime.")
 
@@ -1228,7 +856,7 @@ run the optimize_solute(aspirin)`;
       });
     }
 
-    // Thorough Clear implementation
+    // Complete Terminal Reset
     function performCompleteTerminalReset() {
       if (terminalHistory) terminalHistory.innerHTML = "";
       if (terminalInput) {
@@ -1237,7 +865,6 @@ run the optimize_solute(aspirin)`;
       }
       commandHistory = [];
       historyIndex = -1;
-      latestTokensList = [];
       totalTokensScanned = 0;
       if (tokenCountDisplay) tokenCountDisplay.textContent = "Tokens: 0";
     }
@@ -1246,55 +873,6 @@ run the optimize_solute(aspirin)`;
       clearTermBtn.addEventListener("click", () => {
         performCompleteTerminalReset();
       });
-    }
-
-    // Export Controls
-    if (exportJsonBtn) {
-      exportJsonBtn.addEventListener("click", () => {
-        if (!latestTokensList.length) {
-          showTemporaryNotice("No tokens to export. Run a command or script first.");
-          return;
-        }
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(latestTokensList, null, 2));
-        const dl = document.createElement('a');
-        dl.setAttribute("href", dataStr);
-        dl.setAttribute("download", "calx_tokens.json");
-        document.body.appendChild(dl);
-        dl.click();
-        dl.remove();
-      });
-    }
-
-    if (exportCsvBtn) {
-      exportCsvBtn.addEventListener("click", () => {
-        if (!latestTokensList.length) {
-          showTemporaryNotice("No tokens to export. Run a command or script first.");
-          return;
-        }
-        let csv = "Line,Column,TokenType,Lexeme\n";
-        latestTokensList.forEach(t => {
-          const cleanVal = String(t.value).replace(/"/g, '""');
-          csv += `${t.line},${t.column},"${t.type}","${cleanVal}"\n`;
-        });
-        const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
-        const dl = document.createElement('a');
-        dl.setAttribute("href", dataStr);
-        dl.setAttribute("download", "calx_tokens.csv");
-        document.body.appendChild(dl);
-        dl.click();
-        dl.remove();
-      });
-    }
-
-    function showTemporaryNotice(msg) {
-      const notice = document.createElement("div");
-      notice.className = "fixed bottom-5 right-5 bg-chemblue-800 border border-dandelion-400 text-dandelion-200 px-4 py-2.5 rounded-lg text-xs font-mono shadow-xl z-50 transition-opacity duration-300";
-      notice.textContent = msg;
-      document.body.appendChild(notice);
-      setTimeout(() => {
-        notice.style.opacity = "0";
-        setTimeout(() => notice.remove(), 300);
-      }, 2500);
     }
 
     // Help Modal
@@ -1312,7 +890,7 @@ run the optimize_solute(aspirin)`;
     });
 
     if (terminalScreen && terminalInput) {
-      terminalScreen.addEventListener("click", (e) => {
+      terminalScreen.addEventListener("click", () => {
         if (window.getSelection().toString().length === 0) {
           terminalInput.focus();
         }
