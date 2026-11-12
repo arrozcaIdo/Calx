@@ -403,7 +403,7 @@ run the heavy_opt"></textarea>
             </span>
             <span class="text-white font-semibold">Walltime &amp; Duration Literals</span>
           </div>
-          <p class="text-chemblue-300 text-[11px]">Durations use <code class="font-mono text-blue-200">HH:MM:SS</code> (for example, <code class="font-mono text-blue-200">24:00:00</code>). A number directly followed by a recognized unit, such as <code class="font-mono text-blue-200">100mg</code>, is tokenized as a numeric literal followed by a <code class="font-mono text-amber-200">UNIT</code>.</p>
+          <p class="text-chemblue-300 text-[11px]">Durations use <code class="font-mono text-blue-200">HH:MM:SS</code> (for example, <code class="font-mono text-blue-200">24:00:00</code>). Separate a numeric literal and its unit with whitespace, for example <code class="font-mono text-blue-200">100 mg</code>.</p>
         </section>
 
         <section class="space-y-2 bg-chemblue-950/70 p-3.5 rounded-xl border border-chemblue-800">
@@ -817,11 +817,7 @@ run the heavy_opt"></textarea>
               if (this.peek() === ".") hasDot = true;
               numStr += this.advance();
             }
-            const hasUnitSuffix = Array.from(this.UNITS).some(unit =>
-              this.source.substr(this.pos, unit.length) === unit &&
-              !/[a-zA-Z0-9_]/.test(this.peek(unit.length))
-            );
-            if (/[a-zA-Z_]/.test(this.peek()) && !hasUnitSuffix) {
+            if (/[a-zA-Z_]/.test(this.peek())) {
               let badId = numStr;
               while (/[a-zA-Z0-9_]/.test(this.peek())) badId += this.advance();
               throw new Error(`Lexical error at line ${startLine}: Invalid identifier '${badId}'. Rule 1 violated: Identifiers cannot begin with a digit.`);

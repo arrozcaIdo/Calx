@@ -252,12 +252,7 @@ def end_of_word(text, pos): # san natatapos
         pos += 1
     return pos
 
-def starts_unit(text, pos):
-    return any(
-        text.startswith(unit, pos)
-        and (pos + len(unit) == len(text) or not is_word_char(text[pos + len(unit)]))
-        for unit in UNITS
-    )
+
 
 # function to check if a space is inside a .to() projection
 def has_spaced_projection(text, pos):
@@ -394,7 +389,7 @@ def tokenize(text):
         # Rule 1: Identifiers cannot begin with a digit
         if best_token in ("INT_LIT", "FLOAT_LIT") and best_end < len(text) and (
             text[best_end].isalpha() or text[best_end] == "_"
-        ) and not starts_unit(text, best_end):
+        ):
             bad_end = end_of_word(text, best_end)
             bad_id = text[pos:bad_end]
             raise LexicalError(f"Invalid identifier '{bad_id}'. Rule 1 violated: Identifiers cannot begin with a digit.")
