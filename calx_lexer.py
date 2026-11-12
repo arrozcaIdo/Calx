@@ -80,7 +80,7 @@ KW_CONTROL_TABLE, KW_CONTROL_ACCEPT   = word_table(CONTROL_KEYWORDS)
 KW_IO_TABLE, KW_IO_ACCEPT             = word_table(IO_KEYWORDS)
 KW_MODULE_TABLE, KW_MODULE_ACCEPT     = word_table(MODULE_KEYWORDS)
 KW_LOGICAL_TABLE, KW_LOGICAL_ACCEPT   = word_table(LOGICAL_KEYWORDS)
-KW_SIM_TABLE, KW_SIM_ACCEPT   = word_table(SIMULATION_KEYWORDS)
+KW_SIM_TABLE, KW_SIM_ACCEPT             = word_table(SIMULATION_KEYWORDS)
 TYPE_SPEC_TABLE, TYPE_SPEC_ACCEPT     = word_table(TYPE_SPECS)
 DIM_CLASS_TABLE, DIM_CLASS_ACCEPT     = word_table(DIM_CLASSES)
 UNIT_TABLE, UNIT_ACCEPT               = word_table(UNITS)
@@ -333,7 +333,7 @@ def tokenize(text):
         if best_token not in ("BLANK", "NEWLINE", "COMMENT"):
             tokens.append((best_token, lexeme))
 
-        pos = best_end
+        pos = best_end 
 
     return tokens
 
