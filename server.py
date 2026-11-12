@@ -21,7 +21,8 @@ class CalxRequestHandler(http.server.SimpleHTTPRequestHandler):
 
                 # Returns [(token_type, lexeme), ...]
                 tokens = tokenize(code)
-
+                token_list = [{"type": t[0], "value": t[1]} for t in tokens]
+                
                 tokens_dict = [
                     {
                         "type": tok_type,
