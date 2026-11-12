@@ -54,6 +54,11 @@ DOMAIN_KEYWORDS = [
     "formula", "molecular_weight", "on_success", "on_failure"
 ]
 
+SUB_KEYWORDS = [
+    "equation", "method", "basis", "solvent", 
+    "scheduler", "cpus", "memory",  "walltime"
+]
+
 CONTROL_KEYWORDS = ["if", "elif", "else", "for", "in", "range"]
 IO_KEYWORDS      = ["print", "read"]
 MODULE_KEYWORDS  = ["from", "import"]
@@ -75,6 +80,7 @@ KW_CONTROL_TABLE, KW_CONTROL_ACCEPT   = word_table(CONTROL_KEYWORDS)
 KW_IO_TABLE, KW_IO_ACCEPT             = word_table(IO_KEYWORDS)
 KW_MODULE_TABLE, KW_MODULE_ACCEPT     = word_table(MODULE_KEYWORDS)
 KW_LOGICAL_TABLE, KW_LOGICAL_ACCEPT   = word_table(LOGICAL_KEYWORDS)
+KW_SUB_TABLE, KW_SUB_ACCEPT   = word_table(SUB_KEYWORDS)
 TYPE_SPEC_TABLE, TYPE_SPEC_ACCEPT     = word_table(TYPE_SPECS)
 DIM_CLASS_TABLE, DIM_CLASS_ACCEPT     = word_table(DIM_CLASSES)
 UNIT_TABLE, UNIT_ACCEPT               = word_table(UNITS)
@@ -186,6 +192,7 @@ MACHINES = [
     ("KW_IO",             KW_IO_ACCEPT,           KW_IO_TABLE),
     ("KW_MODULE",         KW_MODULE_ACCEPT,       KW_MODULE_TABLE),
     ("KW_LOGICAL",        KW_LOGICAL_ACCEPT,      KW_LOGICAL_TABLE),
+    ("KW_SUB",            KW_SUB_ACCEPT,          KW_SUB_TABLE),
     ("TYPE_SPEC",         TYPE_SPEC_ACCEPT,       TYPE_SPEC_TABLE),
     ("DIM_CLASS",         DIM_CLASS_ACCEPT,       DIM_CLASS_TABLE),
     ("STATE_FLAG",        STATE_FLAG_ACCEPT,      STATE_FLAG_TABLE),
@@ -212,7 +219,7 @@ MACHINES = [
 ]
 
 WORD_TOKENS = {
-    "KW_DOMAIN", "KW_CONTROL", "KW_IO", "KW_MODULE", "KW_LOGICAL",
+    "KW_DOMAIN", "KW_CONTROL", "KW_IO", "KW_MODULE", "KW_LOGICAL", "KW_SUB",
     "TYPE_SPEC", "DIM_CLASS", "UNIT", "STATE_FLAG", "NOISE_WORD", "IDENTIFIER"
 }
 
