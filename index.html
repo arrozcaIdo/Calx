@@ -396,6 +396,26 @@ run the heavy_opt"></textarea>
           </div>
         </section>
 
+        <section class="space-y-2 bg-chemblue-950/70 p-3.5 rounded-xl border border-chemblue-800">
+          <div class="flex items-center gap-2 border-b border-chemblue-800/80 pb-1.5">
+            <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-blue-900/60 text-blue-200 border border-blue-500/70">
+              DURATION
+            </span>
+            <span class="text-white font-semibold">Walltime &amp; Duration Literals</span>
+          </div>
+          <p class="text-chemblue-300 text-[11px]">Durations use <code class="font-mono text-blue-200">HH:MM:SS</code> (for example, <code class="font-mono text-blue-200">24:00:00</code>). Separate a numeric literal and its unit with whitespace, for example <code class="font-mono text-blue-200">100 mg</code>.</p>
+        </section>
+
+        <section class="space-y-2 bg-chemblue-950/70 p-3.5 rounded-xl border border-chemblue-800">
+          <div class="flex items-center gap-2 border-b border-chemblue-800/80 pb-1.5">
+            <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-chemblue-700/80 text-chemblue-100 border border-chemblue-400 font-semibold">
+              ATTRIBUTE
+            </span>
+            <span class="text-white font-semibold">Unit Projection &amp; Molecular Attributes</span>
+          </div>
+          <p class="text-chemblue-300 text-[11px]"><code class="font-mono text-chemblue-100">.to(...)</code> must be contiguous; <code class="font-mono text-chemblue-100">.formula</code> and <code class="font-mono text-chemblue-100">.molecular_weight</code> are recognized as molecular attribute keywords. Single- and double-quoted f-strings, such as <code class="font-mono text-emerald-300">f"Formula: {sample.formula}"</code>, are emitted as one opaque <code class="font-mono text-emerald-300">FSTRING_LIT</code> token; triple-quoted f-strings are not supported.</p>
+        </section>
+
         <!-- Category: Chemical, Matrix & Domain Operators -->
         <section class="space-y-2">
           <div class="flex items-center gap-2 border-b border-chemblue-800 pb-1.5">
@@ -516,8 +536,7 @@ run the heavy_opt"></textarea>
   <!-- Terminal Client Logic & Full In-Browser Lexer Engine -->
   <script>
     // =========================================================================
-    // Calx In-Browser Lexical Engine (Exact match to calx_lexer.py)
-    // Allows full offline / standalone execution with zero backend dependency
+    // Calx in-browser lexer fallback for offline or standalone execution.
     // =========================================================================
     class ClientCalxLexer {
       constructor(source) {
@@ -573,6 +592,57 @@ run the heavy_opt"></textarea>
           return true;
         }
         return false;
+      }
+
+      hasSpacedProjectionAt(pos) {
+        let cursor = pos + 1;
+        let hasSpace = false;
+        while (/\s/.test(this.source[cursor] || "")) {
+          hasSpace = true;
+          cursor++;
+        }
+        if (this.source.substr(cursor, 2) !== "to" || /[A-Za-z0-9_]/.test(this.source[cursor + 2] || "")) {
+          return false;
+        }
+        cursor += 2;
+        while (/\s/.test(this.source[cursor] || "")) {
+          hasSpace = true;
+          cursor++;
+        }
+        return hasSpace && this.source[cursor] === "(";
+      }
+
+      scanFString(startLine, startCol) {
+        const start = this.pos;
+        const quote = this.source[start + 1];
+        let cursor = start + 2;
+        let closed = false;
+
+        while (cursor < this.length) {
+          if (this.source[cursor] === quote) {
+            cursor++;
+            closed = true;
+            break;
+          }
+          const ch = this.source[cursor];
+          if (ch === "\r" || ch === "\n") {
+            throw new Error(`Line ${startLine}: EOL while scanning f-string literal.`);
+          }
+          cursor += ch === "\\" ? 2 : 1;
+        }
+
+        if (!closed) throw new Error(`Line ${startLine}: Unterminated f-string literal.`);
+
+        const value = this.source.slice(start, cursor);
+        const lineBreaks = value.match(/\r\n|\r|\n/g) || [];
+        this.line += lineBreaks.length;
+        if (lineBreaks.length) {
+          this.col = value.length - Math.max(value.lastIndexOf("\r"), value.lastIndexOf("\n"));
+        } else {
+          this.col += value.length;
+        }
+        this.pos = cursor;
+        this.tokens.push({ type: "FSTRING_LIT", value, line: startLine, column: startCol });
       }
 
       tokenize() {
@@ -633,6 +703,10 @@ run the heavy_opt"></textarea>
           const startCol = this.col;
           const ch = this.peek();
 
+          if (ch === "." && this.hasSpacedProjectionAt(this.pos)) {
+            throw new Error("Whitespace is not allowed inside a .to(...) projection.");
+          }
+
           // Whitespace
           if (ch === " " || ch === "\t") {
             this.advance();
@@ -658,6 +732,16 @@ run the heavy_opt"></textarea>
             continue;
           }
 
+          // F-strings are emitted as one opaque literal token.
+          if ((ch === "f" || ch === "F") && (this.peek(1) === '"' || this.peek(1) === "'")) {
+            const quote = this.peek(1);
+            if (this.source.substr(this.pos + 1, 3) === quote.repeat(3)) {
+              throw new Error("Triple-quoted f-strings are not supported.");
+            }
+            this.scanFString(startLine, startCol);
+            continue;
+          }
+
           // Multi-line docstring
           if (this.matchStr('"""')) {
             let val = '"""';
@@ -677,16 +761,10 @@ run the heavy_opt"></textarea>
             continue;
           }
 
-          // String literals & f-strings
-          let isFString = false;
-          if (ch === "f" && (this.peek(1) === '"' || this.peek(1) === "'")) {
-            isFString = true;
-            this.advance();
-          }
-
+          // String literals
           if (this.peek() === '"' || this.peek() === "'") {
             const quote = this.advance();
-            let val = (isFString ? "f" : "") + quote;
+            let val = quote;
             let closed = false;
             while (this.pos < this.length) {
               const c = this.advance();
@@ -724,6 +802,17 @@ run the heavy_opt"></textarea>
 
           // Numbers & Leading-digit identifier rejection
           if (/\d/.test(ch)) {
+            const durationMatch = this.source.substring(this.pos).match(/^[0-9]{2,}:[0-9]{2}:[0-9]{2}/);
+            if (durationMatch) {
+              const next = this.source[this.pos + durationMatch[0].length] || "";
+              if (/[a-zA-Z0-9_:]/.test(next)) {
+                throw new Error(`Invalid duration '${durationMatch[0]}'. Expected HH:MM:SS.`);
+              }
+              this.matchStr(durationMatch[0]);
+              this.tokens.push({ type: "DURATION", value: durationMatch[0], line: startLine, column: startCol });
+              continue;
+            }
+
             let numStr = "";
             let hasDot = false;
             while (/\d/.test(this.peek()) || (this.peek() === "." && !hasDot && /\d/.test(this.peek(1)))) {
@@ -741,6 +830,7 @@ run the heavy_opt"></textarea>
 
           // Identifiers & Reserved Keywords
           if (/[a-zA-Z_]/.test(ch)) {
+            const wordStart = this.pos;
             let word = "";
             while (/[a-zA-Z0-9_]/.test(this.peek())) word += this.advance();
 
@@ -750,7 +840,11 @@ run the heavy_opt"></textarea>
               throw new Error(`Lexical error at line ${startLine}, col ${startCol}: Invalid identifier '${word}'. Rule 5 violated: Hyphens are not allowed inside identifiers.`);
             }
 
-            if (this.KEYWORDS.has(word)) {
+            if (wordStart > 0 && this.source[wordStart - 1] === "." && word === "to") {
+              this.tokens.push({ type: "KW_PROJECTION", value: word, line: startLine, column: startCol });
+            } else if (wordStart > 0 && this.source[wordStart - 1] === "." && (word === "formula" || word === "molecular_weight")) {
+              this.tokens.push({ type: "KW_MOL_ATTRIBUTE", value: word, line: startLine, column: startCol });
+            } else if (this.KEYWORDS.has(word)) {
               this.tokens.push({ type: "KEYWORD", value: word, line: startLine, column: startCol });
             } else if (this.TYPE_SPECS.has(word)) {
               this.tokens.push({ type: "TYPE_SPEC", value: word, line: startLine, column: startCol });
@@ -833,6 +927,9 @@ run the heavy_opt"></textarea>
           return "bg-chemblue-700/80 text-chemblue-100 border border-chemblue-400 font-semibold";
         case "TYPE_SPEC":
           return "bg-sky-950 text-sky-300 border border-sky-600";
+        case "KW_PROJECTION":
+        case "KW_MOL_ATTRIBUTE":
+          return "bg-chemblue-700/80 text-chemblue-100 border border-chemblue-400 font-semibold";
         case "DIM_CLASS":
           return "bg-dandelion-400/20 text-dandelion-300 border border-dandelion-400/60 font-semibold";
         case "UNIT":
@@ -846,8 +943,10 @@ run the heavy_opt"></textarea>
           return "bg-chemblue-900 text-slate-200 border border-chemblue-700";
         case "FLOAT_LIT":
         case "INT_LIT":
+        case "DURATION":
           return "bg-blue-900/60 text-blue-200 border border-blue-500/70";
         case "STRING_LIT":
+        case "FSTRING_LIT":
           return "bg-emerald-950/70 text-emerald-300 border border-emerald-600/60";
         case "INDENT":
         case "DEDENT":
