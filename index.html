@@ -413,7 +413,7 @@ run the heavy_opt"></textarea>
             </span>
             <span class="text-white font-semibold">Unit Projection &amp; Molecular Attributes</span>
           </div>
-          <p class="text-chemblue-300 text-[11px]"><code class="font-mono text-chemblue-100">.to(...)</code> must be contiguous; <code class="font-mono text-chemblue-100">.formula</code> and <code class="font-mono text-chemblue-100">.molecular_weight</code> are recognized as molecular attribute keywords. An f-string such as <code class="font-mono text-emerald-300">f"Formula: {sample.formula}"</code> is emitted as one opaque <code class="font-mono text-emerald-300">FSTRING_LIT</code> token.</p>
+          <p class="text-chemblue-300 text-[11px]"><code class="font-mono text-chemblue-100">.to(...)</code> must be contiguous; <code class="font-mono text-chemblue-100">.formula</code> and <code class="font-mono text-chemblue-100">.molecular_weight</code> are recognized as molecular attribute keywords. Single- and double-quoted f-strings, such as <code class="font-mono text-emerald-300">f"Formula: {sample.formula}"</code>, are emitted as one opaque <code class="font-mono text-emerald-300">FSTRING_LIT</code> token; triple-quoted f-strings are not supported.</p>
         </section>
 
         <!-- Category: Chemical, Matrix & Domain Operators -->
@@ -615,19 +615,17 @@ run the heavy_opt"></textarea>
       scanFString(startLine, startCol) {
         const start = this.pos;
         const quote = this.source[start + 1];
-        const triple = this.source.substr(start + 1, 3) === quote.repeat(3);
-        const delimiter = triple ? quote.repeat(3) : quote;
-        let cursor = start + 1 + delimiter.length;
+        let cursor = start + 2;
         let closed = false;
 
         while (cursor < this.length) {
-          if (this.source.substr(cursor, delimiter.length) === delimiter) {
-            cursor += delimiter.length;
+          if (this.source[cursor] === quote) {
+            cursor++;
             closed = true;
             break;
           }
           const ch = this.source[cursor];
-          if (!triple && (ch === "\r" || ch === "\n")) {
+          if (ch === "\r" || ch === "\n") {
             throw new Error(`Line ${startLine}: EOL while scanning f-string literal.`);
           }
           cursor += ch === "\\" ? 2 : 1;
@@ -736,6 +734,10 @@ run the heavy_opt"></textarea>
 
           // F-strings are emitted as one opaque literal token.
           if ((ch === "f" || ch === "F") && (this.peek(1) === '"' || this.peek(1) === "'")) {
+            const quote = this.peek(1);
+            if (this.source.substr(this.pos + 1, 3) === quote.repeat(3)) {
+              throw new Error("Triple-quoted f-strings are not supported.");
+            }
             this.scanFString(startLine, startCol);
             continue;
           }
