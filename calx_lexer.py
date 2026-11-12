@@ -83,10 +83,7 @@ UNIT_TABLE, UNIT_ACCEPT                         = word_table(UNITS)
 STATE_FLAG_TABLE, STATE_FLAG_ACCEPT             = word_table(STATE_FLAGS)
 NOISE_WORD_TABLE, NOISE_WORD_ACCEPT             = word_table(NOISE_WORDS)
 
-# Identifier DFA rules:
-# (1) Must start with a letter or underscore (Q1 -> Q2)
-# (2) Can contain letters, digits, or underscores (loops at Q2)
-# (3) Terminates when hitting whitespace, an operator, or a delimiter
+
 IDENTIFIER_TABLE = {
     "Q1": {"ALPHABET": "Q2", "_": "Q2"},
     "Q2": {"ALPHABET": "Q2", "DIGITS": "Q2", "_": "Q2"},
@@ -253,7 +250,7 @@ DELIMITER_CHARS = set("()[]{},:.")
 
 
 # =============================================================================
-# SCANNER ENGINE (WITH PANIC-MODE ERROR RECOVERY)
+# SCANNER ENGINE
 # =============================================================================
 
 class LexicalError(Exception):
@@ -321,7 +318,7 @@ def longest_match(accept, table, text, pos):
 def validate_candidate(text, pos, token_type, end):
     lexeme = text[pos:end]
 
-    # 1. Unterminated multi-line comment (consumes to EOF so it doesn't cascade)
+    # 1. Unterminated multi-line comment (consumes to EOF)
     if text.startswith('"""', pos) and token_type != "MULTI_COMMENT":
         return (
             "LEXICAL_ERROR",
@@ -329,7 +326,7 @@ def validate_candidate(text, pos, token_type, end):
             len(text),
         )
 
-    # 2. Spaced .to() projection check
+    # 2. .to() projection check
     if token_type == "DELIM_DOT" and has_spaced_projection(text, pos):
         return (
             "LEXICAL_ERROR",
@@ -337,7 +334,7 @@ def validate_candidate(text, pos, token_type, end):
             end,
         )
 
-    # 3. Malformed duration literal
+    # 3. Duration literal for HH:MM:SS
     if token_type == "DURATION" and end < len(text) and (
         is_word_char(text[end]) or text[end] == ":"
     ):
@@ -475,7 +472,7 @@ def tokenize(text):
 
 
 # =============================================================================
-# TERMINAL REPL
+# TERMINAL
 # =============================================================================
 
 if __name__ == "__main__":
