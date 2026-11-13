@@ -52,11 +52,13 @@ SIMULATION_KEYWORDS = [
     "scheduler", "cpus", "memory", "walltime"
 ]
 
-CONTROL_KEYWORDS = ["if", "elif", "else", "for", "in", "range"]
+FUNCTION_KEYWORDS = ["def", "return"]
+CONDITIONAL_KEYWORDS = ["if", "elif", "else", "match", "case"]
+LOOP_CONTROL_KEYWORDS = ["for", "in", "while", "break", "continue", "range"]
+STATEMENT_KEYWORDS = ["pass", "yield"]
 IO_KEYWORDS      = ["print", "read"]
 MODULE_KEYWORDS  = ["from", "import"]
 LOGICAL_KEYWORDS = ["is", "not", "and", "or"]
-
 
 TYPE_SPECS = ["Float", "Integer", "Boolean", "String", "mol", "Vector", "Matrix"]
 DIM_CLASSES = ["Length", "Mass", "Time", "Temp", "Pressure", "Energy", "Amount", "Volume", "Dipole", "Data"]
@@ -73,7 +75,10 @@ NOISE_WORDS = ["the"]
 KW_DOMAIN_TABLE, KW_DOMAIN_ACCEPT               = word_table(DOMAIN_KEYWORDS)
 KW_PROJECTION_TABLE, KW_PROJECTION_ACCEPT       = word_table(["to"])
 KW_MOL_ATTRIBUTE_TABLE, KW_MOL_ATTRIBUTE_ACCEPT = word_table(["formula", "molecular_weight"])
-KW_CONTROL_TABLE, KW_CONTROL_ACCEPT             = word_table(CONTROL_KEYWORDS)
+KW_FUNCTION_TABLE, KW_FUNCTION_ACCEPT           = word_table(FUNCTION_KEYWORDS)
+KW_CONDITIONAL_TABLE, KW_CONDITIONAL_ACCEPT     = word_table(CONDITIONAL_KEYWORDS)
+KW_LOOP_CONTROL_TABLE, KW_LOOP_CONTROL_ACCEPT   = word_table(LOOP_CONTROL_KEYWORDS)
+KW_STATEMENT_TABLE, KW_STATEMENT_ACCEPT         = word_table(STATEMENT_KEYWORDS)
 KW_IO_TABLE, KW_IO_ACCEPT                       = word_table(IO_KEYWORDS)
 KW_MODULE_TABLE, KW_MODULE_ACCEPT               = word_table(MODULE_KEYWORDS)
 KW_LOGICAL_TABLE, KW_LOGICAL_ACCEPT             = word_table(LOGICAL_KEYWORDS)
@@ -83,6 +88,8 @@ DIM_CLASS_TABLE, DIM_CLASS_ACCEPT               = word_table(DIM_CLASSES)
 UNIT_TABLE, UNIT_ACCEPT                         = word_table(UNITS)
 STATE_FLAG_TABLE, STATE_FLAG_ACCEPT             = word_table(STATE_FLAGS)
 NOISE_WORD_TABLE, NOISE_WORD_ACCEPT             = word_table(NOISE_WORDS)
+BOOL_LIT_TABLE, BOOL_LIT_ACCEPT                 = word_table(["True", "False"])
+NULL_LIT_TABLE, NULL_LIT_ACCEPT                 = word_table(["None"])
 
 IDENTIFIER_TABLE = {
     "Q1": {"ALPHABET": "Q2", "_": "Q2"},
@@ -208,7 +215,10 @@ MACHINES = [
     ("KW_DOMAIN",         KW_DOMAIN_ACCEPT,        KW_DOMAIN_TABLE),
     ("KW_PROJECTION",     KW_PROJECTION_ACCEPT,    KW_PROJECTION_TABLE),
     ("KW_MOL_ATTRIBUTE",  KW_MOL_ATTRIBUTE_ACCEPT, KW_MOL_ATTRIBUTE_TABLE),
-    ("KW_CONTROL",        KW_CONTROL_ACCEPT,       KW_CONTROL_TABLE),
+    ("KW_FUNCTION",       KW_FUNCTION_ACCEPT,      KW_FUNCTION_TABLE),
+    ("KW_CONDITIONAL",    KW_CONDITIONAL_ACCEPT,   KW_CONDITIONAL_TABLE),
+    ("KW_LOOP_CONTROL",   KW_LOOP_CONTROL_ACCEPT,  KW_LOOP_CONTROL_TABLE),
+    ("KW_STATEMENT",      KW_STATEMENT_ACCEPT,     KW_STATEMENT_TABLE),
     ("KW_IO",             KW_IO_ACCEPT,            KW_IO_TABLE),
     ("KW_MODULE",         KW_MODULE_ACCEPT,        KW_MODULE_TABLE),
     ("KW_LOGICAL",        KW_LOGICAL_ACCEPT,       KW_LOGICAL_TABLE),
@@ -218,6 +228,8 @@ MACHINES = [
     ("STATE_FLAG",        STATE_FLAG_ACCEPT,       STATE_FLAG_TABLE),
     ("NOISE_WORD",        NOISE_WORD_ACCEPT,       NOISE_WORD_TABLE),
 
+    ("BOOL_LIT",          BOOL_LIT_ACCEPT,          BOOL_LIT_TABLE),
+    ("NULL_LIT",          NULL_LIT_ACCEPT,          NULL_LIT_TABLE),
     ("DURATION",          DURATION_ACCEPT,         DURATION_TABLE),
     ("FLOAT_LIT",         FLOAT_ACCEPT,            FLOAT_TABLE),
     ("INT_LIT",           INTEGER_ACCEPT,          INTEGER_TABLE),
@@ -242,9 +254,9 @@ MACHINES = [
 ]
 
 WORD_TOKENS = {
-    "KW_DOMAIN", "KW_CONTROL", "KW_IO", "KW_MODULE", "KW_LOGICAL", "KW_SIM",
+    "KW_DOMAIN", "KW_FUNCTION", "KW_CONDITIONAL", "KW_LOOP_CONTROL", "KW_STATEMENT", "KW_IO", "KW_MODULE", "KW_LOGICAL", "KW_SIM",
     "KW_PROJECTION", "KW_MOL_ATTRIBUTE", "TYPE_SPEC", "DIM_CLASS", "UNIT",
-    "STATE_FLAG", "NOISE_WORD", "IDENTIFIER"
+    "STATE_FLAG", "NOISE_WORD", "BOOL_LIT", "NULL_LIT", "IDENTIFIER"
 }
 
 OPERATOR_CHARS = set("+-*/%^=<>!@")
@@ -266,6 +278,18 @@ def end_of_word(text, pos):
     while pos < len(text) and is_word_char(text[pos]):
         pos += 1
     return pos
+
+
+def duration_candidate_end(text, pos):
+    cursor = pos
+    for group_index in range(3):
+        while cursor < len(text) and text[cursor].isdigit():
+            cursor += 1
+        if group_index < 2:
+            if cursor >= len(text) or text[cursor] != ":":
+                return None
+            cursor += 1
+    return cursor
 
 
 def end_of_line(text, pos):
@@ -348,6 +372,16 @@ def validate_candidate(text, pos, token_type, end):
             bad_end,
         )
 
+    if token_type in ("INT_LIT", "FLOAT_LIT") and duration_candidate_end(text, pos) is not None:
+        bad_end = duration_candidate_end(text, pos)
+        while bad_end < len(text) and (is_word_char(text[bad_end]) or text[bad_end] == ":"):
+            bad_end += 1
+        return (
+            "LEXICAL_ERROR",
+            f"{text[pos:bad_end]} -> Invalid duration (expected HH:MM:SS)",
+            bad_end,
+        )
+
     # Calx Rule 1: Identifiers cannot begin with a digit
     if token_type in ("INT_LIT", "FLOAT_LIT") and end < len(text) and (
         text[end].isalpha() or text[end] == "_"
@@ -375,10 +409,14 @@ def validate_candidate(text, pos, token_type, end):
         and text[pos + 1] in ('"', "'")
         and text.startswith(text[pos + 1] * 3, pos + 1)
     ):
+        delimiter = text[pos + 1] * 3
+        closing = text.find(delimiter, pos + 4)
+        bad_end = len(text) if closing == -1 else closing + len(delimiter)
+        bad_lexeme = text[pos:bad_end]
         return (
             "LEXICAL_ERROR",
-            f"{lexeme} -> Triple-quoted f-strings are not supported",
-            end,
+            f"{bad_lexeme} -> Triple-quoted f-strings are not supported",
+            bad_end,
         )
 
     # Missing delimiter/space between adjacent word tokens
